@@ -128,6 +128,14 @@ main{padding:26px 0 60px}
   font-size:10px;font-weight:700;color:var(--ink2)}
 .votelegend{display:flex;justify-content:space-between;font-size:12px;color:var(--ink2);margin-top:14px}
 
+/* live whip sheet */
+#whiplive{margin-top:14px;padding-top:12px;border-top:1px dashed var(--line)}
+.wl-head{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--brass);margin-bottom:8px}
+.wl-buckets{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.wb{font-size:11.5px;font-weight:800;padding:3px 9px;border-radius:99px;color:var(--chip-ink)}
+.wl-status{font-size:12.5px;color:var(--ink2);line-height:1.45}
+.wl-status strong{color:var(--ink)}
+
 /* ============ PLAN ============ */
 .flow{display:flex;flex-direction:column;gap:0}
 .verdict{border-radius:var(--radius);padding:16px 18px;margin-bottom:18px;font-size:15px;
@@ -289,7 +297,7 @@ footer.foot strong{color:var(--ink)}
           </select>
         </div>
         <div class="field">
-          <label for="target">Target date for final passage</label>
+          <label for="target">Target: Senate passage by</label>
           <input type="date" id="target" value="2026-08-07" min="2026-07-28" max="2026-10-02">
         </div>
       </div>
@@ -326,14 +334,17 @@ footer.foot strong{color:var(--ink)}
           <span><span class="t-name"><span class="dot c-coral"></span>Nuclear option</span><br>
           <span class="t-desc">Majority creates a new precedent lowering cloture on legislation to 51. Never yet done for legislation.</span></span></label>
         <label class="tog"><input type="checkbox" id="t-house" checked>
-          <span><span class="t-name"><span class="dot c-teal"></span>Model the House side too</span><br>
-          <span class="t-desc">If the Senate amends the bill, it isn't law until the House concurs — show that path all the way to the President's desk.</span></span></label>
+          <span><span class="t-name"><span class="dot c-teal"></span>Show the House side (informational)</span><br>
+          <span class="t-desc">Your target is Senate passage — House concurrence steps are drawn on the timeline for context but never count against the deadline.</span></span></label>
       </div>
 
       <div class="panel">
         <h2>3 · Floor Traffic</h2>
         <p style="font-size:12.5px;color:var(--ink2);margin:0 0 10px">One floor, many demands. Check what
           else leadership has queued, and where your bill sits in line.</p>
+        <label class="tog"><input type="checkbox" id="tr-russia" checked>
+          <span><span class="t-name"><span class="dot c-amber"></span>Sanctioning Russia Act <em>(moving now)</em></span><br>
+          <span class="t-desc">Introduced Jul 14 to honor Sen. Graham; 60 cosponsors, Schumer demanding an immediate vote, Thune “hopeful.” Likely takes ~3 session days this week — ahead of you.</span></span></label>
         <label class="tog"><input type="checkbox" id="tr-ndaa">
           <span><span class="t-name"><span class="dot c-amber"></span>NDAA floor week</span><br>
           <span class="t-desc">Annual defense authorization — typically eats a full week (5 session days).</span></span></label>
@@ -346,8 +357,8 @@ footer.foot strong{color:var(--ink)}
         <div class="field" style="margin-top:10px">
           <label for="priority">Who goes first?</label>
           <select id="priority">
-            <option value="bill" selected>Our bill first — traffic waits</option>
-            <option value="traffic">Traffic first — our bill waits</option>
+            <option value="bill">Our bill first — traffic waits</option>
+            <option value="traffic" selected>Traffic first — our bill waits</option>
           </select>
         </div>
       </div>
@@ -370,6 +381,12 @@ footer.foot strong{color:var(--ink)}
           <div class="mark" style="left:60%" data-l="60"></div>
         </div>
         <div class="votelegend"><span id="votetot" class="mono"></span><span id="voteverdict"></span></div>
+        <div id="whiplive">
+          <div class="wl-head">⚡ Live · Senate_Crypto_Whip_Sheet</div>
+          <div class="wl-buckets" id="wl-buckets"></div>
+          <div class="wl-status" id="wl-status">Checking for live sync…</div>
+          <button class="action-btn" id="wl-apply" style="display:none">Re-apply live count to sliders</button>
+        </div>
       </div>
     </div>
 
@@ -482,7 +499,11 @@ const BILLS={
     substitute:false, byrdOK:false, gop:51, dem:9, note:''}
 };
 
-const TRAFFIC_ITEMS={ndaa:{label:'NDAA floor time',days:5},approps:{label:'Approps / CR floor time',days:4},noms:{label:'Nominations floor time',days:2}};
+const TRAFFIC_ITEMS={
+  russia:{label:'Russia sanctions floor time',days:3},
+  ndaa:{label:'NDAA floor time',days:5},
+  approps:{label:'Approps / CR floor time',days:4},
+  noms:{label:'Nominations floor time',days:2}};
 
 // ---------- The engine ----------
 function computePlan(cfg){
@@ -552,7 +573,7 @@ function computePlan(cfg){
       'Art. II §2',{n:51,label:'51 votes'},confDay,'CONFIRMED ×5');
     asks.push('Ask the cloakrooms to hotline an en-bloc UC first — 90% of nominations clear by voice vote, and the cloture machinery above is only for the contested ones.');
     asks.push('Ask the Leader to file all five cloture petitions the same afternoon so the ripening clocks run concurrently.');
-    return {steps,boxes,asks,S,finalDi:confDay,blocked:false,clotureNeed,clotureVotes,trafficBlocks};
+    return {steps,boxes,asks,S,finalDi:confDay,senateDi:confDay,blocked:false,clotureNeed,clotureVotes,trafficBlocks};
   }
 
   // ----- Nuclear option box (if armed) -----
@@ -590,7 +611,7 @@ function computePlan(cfg){
         'Simple majority; the Vice President can break a 50–50 tie.', 'Art. I §3',{n:51,label:'51 votes'},i+2,'FINAL PASSAGE');
       asks.push('Ask Budget Committee leadership for reconciliation instructions covering this measure in the FY2027 budget resolution.');
       asks.push('Ask the Parliamentarian’s office for an early Byrd-rule scrub of the bill text.');
-      return {steps,boxes,asks,S,finalDi:i+2,blocked:false,clotureNeed,clotureVotes,trafficBlocks};
+      return {steps,boxes,asks,S,finalDi:i+2,senateDi:i+2,blocked:false,clotureNeed,clotureVotes,trafficBlocks};
     }
   }
 
@@ -599,7 +620,7 @@ function computePlan(cfg){
     blocked=true;
     boxes.push({at:0,kind:'override',title:`You are ${clotureNeed-clotureVotes} vote${clotureNeed-clotureVotes===1?'':'s'} short of cloture`,
       body:`Your whip count shows ${clotureVotes} (${cfg.gop} R + ${cfg.dem} D-caucus). Every cloture gate on this path needs ${clotureNeed}. Until the math works, the schedule below is theoretical. Ways to close the gap:`,
-      list:['Win more votes — for the CLARITY Act that means Democratic asks on consumer protection, ethics/conflict-of-interest, and AML provisions (the Alsobrooks conditions).',
+      list:['Win more votes — the gettable pool is the Democratic “lean no”s, and the publicly stated price is ethics/conflict-of-interest language covering elected officials, consumer protection, and AML. If your whip sheet is synced, the counter above shows the live gap.',
         'Negotiate a global UC agreement instead (no cloture votes at all — but any one senator can object).',
         'The nuclear option (51-vote cloture) — see the strategy lever, and its price.'],
       cost:'Recommendation: the whip count IS the schedule. Fix this first.'});
@@ -639,9 +660,10 @@ function computePlan(cfg){
       null,{n:51,label:'51 votes'},amendDay+1,'FINAL PASSAGE');
     asks.push('Ask both cloakrooms to hotline the consent agreement early in the week and report back every objection so you can negotiate them down one by one.');
     asks.push('Prepare a fallback cloture schedule in case the UC is blocked — file the same day the objection lands.');
-    let ucFinal=amendDay+1;
+    const ucSenate=amendDay+1;
+    let ucFinal=ucSenate;
     if(bill.substitute&&cfg.house) ucFinal=addHouseSteps(add,asks,ucFinal,day);
-    return {steps,boxes,asks,S,finalDi:ucFinal,blocked:false,clotureNeed,clotureVotes,trafficBlocks};
+    return {steps,boxes,asks,S,finalDi:ucFinal,senateDi:ucSenate,blocked:false,clotureNeed,clotureVotes,trafficBlocks};
   }
 
   const yieldBack=cfg.yield;
@@ -711,9 +733,10 @@ function computePlan(cfg){
   if(cfg.wknd) asks.push('Ask the Leader to announce weekend sessions in advance — Saturday and Sunday count as session days for ripening cloture, buying back the calendar.');
   if(cfg.extend) asks.push('Ask leadership to formally delay the state work period — the Leader controls the schedule, and no senator can force an adjournment; but members can make extended sessions painful by denying quorums, so pair the ask with a public message about why the bill can’t wait for September.');
 
+  const senateDi=finalDi;
   if(bill.substitute && cfg.house && !blocked) finalDi=addHouseSteps(add,asks,finalDi,day);
 
-  return {steps,boxes,asks,S,finalDi,blocked,clotureNeed,clotureVotes,trafficBlocks};
+  return {steps,boxes,asks,S,finalDi,senateDi,blocked,clotureNeed,clotureVotes,trafficBlocks};
 }
 
 function addHouseSteps(add,asks,fromDi,day){
@@ -741,7 +764,7 @@ function currentCfg(){
     weekends:$('t-wknd').checked, extend:$('t-extend').checked, msg:$('t-msg').checked,
     recon:$('t-recon').checked, nuke:$('t-nuke').checked, house:$('t-house').checked,
     minority:$('minority').value, priority:$('priority').value,
-    traffic:['ndaa','approps','noms'].filter(k=>$('tr-'+k).checked),
+    traffic:['russia','ndaa','approps','noms'].filter(k=>$('tr-'+k).checked),
     gop:+$('w-gop').value, dem:+$('w-dem').value,
     target:new Date($('target').value+'T00:00:00Z')};
 }
@@ -774,18 +797,19 @@ function render(){
   $('voteverdict').textContent=tot>=R.clotureNeed?'Clears cloture ('+R.clotureNeed+')':
     (tot>=51?'Passes, but cloture fails':'Fails everything');
 
-  // verdict banner
-  const madeIt=finalDate&&+finalDate<=+cfg.target&&!R.blocked;
-  const missBy=finalDate?R.S.filter(d=>+d>+cfg.target&&+d<=+finalDate).length:0;
+  // verdict banner — measured against SENATE passage, not House action
+  const senateDate=R.steps.length?R.S[Math.min(R.senateDi,R.S.length-1)]:null;
+  const madeIt=senateDate&&+senateDate<=+cfg.target&&!R.blocked;
+  const missBy=senateDate?R.S.filter(d=>+d>+cfg.target&&+d<=+senateDate).length:0;
   let cls,head,body;
   if(R.blocked){cls='fail';head='⛔ Blocked on the math, not the calendar';
     body=`The dates below work, but cloture needs ${R.clotureNeed} and you’re whipping ${R.clotureVotes}. See the red box in the path for ways to close the gap.`;}
-  else if(madeIt){cls='ok';head='✅ It fits: final passage '+fmt(finalDate);
-    const spare=R.S.filter(d=>+d>+finalDate&&+d<=+cfg.target).length;
-    body=`${cfg.bill.name.charAt(0).toUpperCase()+cfg.bill.name.slice(1)} can clear the Senate by your ${fmt(cfg.target)} target under the levers selected — with ${spare} session day${spare===1?'':'s'} of cushion. ${cfg.bill.note}`;}
-  else{cls='warn';head='⚠️ Misses the target by '+missBy+' session day'+(missBy===1?'':'s')+
-    (finalDate?' (lands '+fmt(finalDate)+')':'');
-    body='The rules-conforming schedule overshoots your date. Cheapest fixes, in order: yield back post-cloture time (saves ~2 days), weekend sessions, a global UC, or — the big ask — delaying the recess.';}
+  else if(madeIt){cls='ok';head='✅ It fits: Senate passage '+fmt(senateDate);
+    const spare=R.S.filter(d=>+d>+senateDate&&+d<=+cfg.target).length;
+    body=`${cfg.bill.name.charAt(0).toUpperCase()+cfg.bill.name.slice(1)} clears the Senate by your ${fmt(cfg.target)} target under the levers selected — with ${spare} session day${spare===1?'':'s'} of cushion. House steps shown on the timeline are informational and don’t count against the target. ${cfg.bill.note}`;}
+  else{cls='warn';head='⚠️ Misses Senate passage by '+missBy+' session day'+(missBy===1?'':'s')+
+    (senateDate?' (Senate vote lands '+fmt(senateDate)+')':'');
+    body='The rules-conforming schedule overshoots your date. Cheapest fixes, in order: yield back post-cloture time (saves ~2 days), weekend sessions, a global UC, jumping the traffic queue, or — the big ask — delaying the recess.';}
   $('verdict').innerHTML=`<div class="verdict ${cls}"><div class="v-head">${head}</div><div class="v-body">${body}</div></div>`;
 
   // steps + boxes
@@ -821,10 +845,10 @@ function buildMemo(){
   if(!LAST) return '';
   const {R,cfg}=LAST;
   const strip=h=>{const d=document.createElement('div');d.innerHTML=h;return d.textContent.replace(/\s+/g,' ').trim();};
-  const finalDate=R.steps.length?R.steps[R.steps.length-1].date:null;
+  const senateDate=R.steps.length?R.S[Math.min(R.senateDi,R.S.length-1)]:null;
   let md=`# Floor memo: ${cfg.bill.name}\n\n`;
-  md+=`**Target:** final passage by ${fmt(cfg.target)}. `;
-  md+=finalDate?`**Modeled outcome:** ${R.blocked?'BLOCKED on the whip count':'lands '+fmt(finalDate)}.\n\n`:'\n\n';
+  md+=`**Target:** Senate passage by ${fmt(cfg.target)}. `;
+  md+=senateDate?`**Modeled outcome:** ${R.blocked?'BLOCKED on the whip count':'Senate vote lands '+fmt(senateDate)}.\n\n`:'\n\n';
   md+=`**Whip count:** ${cfg.gop} R + ${cfg.dem} D-caucus = ${R.clotureVotes} (cloture threshold on this path: ${R.clotureNeed}).\n\n`;
   md+=`## The path\n\n`;
   R.steps.forEach((s,i)=>{md+=`${i+1}. **${fmt(s.date)} — ${s.title}**${s.thresh?` _(${s.thresh.label})_`:''}\n   ${strip(s.body)}${s.cite?` _(${s.cite})_`:''}\n`;});
@@ -889,6 +913,108 @@ function renderTimeline(R,cfg){
 }
 
 /* ================================================================
+   LIVE WHIP SHEET (Google Drive via window.claude.mcp)
+   Reads the "Expected MTP Vote" column of Senate_Crypto_Whip_Sheet
+   and keeps the whip counter current. Degrades to manual sliders
+   anywhere the connector isn't available.
+   ================================================================ */
+const WHIP={unsub:null,counts:null,applied:false};
+const DRIVE='Google Drive';
+
+function whipErrMsg(e){
+  switch(e&&e.code){
+    case 'needs_reauth': return 'Reconnect Google Drive in claude.ai Settings → Connectors to resume live sync.';
+    case 'server_not_connected': return 'Add the Google Drive connector in claude.ai Settings → Connectors to sync your whip sheet.';
+    case 'selection_required': return 'Choose which Google Drive connector to use when claude.ai asks, then reload.';
+    case 'blocked_by_policy': return 'Your organization’s policy blocks Drive access from this page — manual sliders in effect.';
+    case 'approval_required': return 'Drive access needs per-call approval, which artifacts can’t request yet — manual sliders in effect.';
+    case 'not_granted': case 'capability_disabled': case 'capability_removed':
+      return 'Live sync isn’t available in this view — manual sliders in effect.';
+    case 'tool_error': return 'Drive reported an error reading the sheet'+(e.message?': '+e.message:'.');
+    default: return 'Live sync hiccup ('+((e&&e.code)||'unknown')+') — manual sliders in effect.';
+  }
+}
+
+function parseWhipSheet(text){
+  const rows=text.split('\n').filter(l=>l.trim().startsWith('|'))
+    .map(l=>l.split('|').map(c=>c.trim()));
+  const hi=rows.findIndex(r=>r.includes('Senator')&&r.includes('Expected MTP Vote'));
+  if(hi<0)return null;
+  const H=rows[hi], senIx=H.indexOf('Senator'), pIx=H.indexOf('Party'), vIx=H.indexOf('Expected MTP Vote');
+  const c={strongYes:0,leanYes:0,tossup:0,leanNo:0,strongNo:0,gopYes:0,demYes:0,leanNoD:0};
+  for(let k=hi+1;k<rows.length;k++){
+    const r=rows[k]; const sen=r[senIx]||'', party=r[pIx]||'', v=(r[vIx]||'').toLowerCase();
+    if(!sen||sen.includes(':-:')||sen.includes('[merged]')||!v)continue;
+    const rep=party==='R';
+    if(v==='strong yes'||v==='lean yes'){ c[v==='strong yes'?'strongYes':'leanYes']++; rep?c.gopYes++:c.demYes++; }
+    else if(v==='tossup')c.tossup++;
+    else if(v==='lean no'){c.leanNo++; if(!rep)c.leanNoD++;}
+    else if(v==='strong no')c.strongNo++;
+  }
+  return (c.strongYes+c.leanYes+c.leanNo+c.strongNo)?c:null;
+}
+
+function renderWhipLive(storedAt){
+  const c=WHIP.counts;
+  $('wl-buckets').innerHTML=
+    `<span class="wb c-green">${c.strongYes} strong yes</span>`+
+    `<span class="wb" style="background:var(--green-bg);color:var(--green)">${c.leanYes} lean yes</span>`+
+    `<span class="wb c-amber">${c.tossup} tossup</span>`+
+    `<span class="wb" style="background:var(--coral-bg);color:var(--coral)">${c.leanNo} lean no</span>`+
+    `<span class="wb c-coral">${c.strongNo} strong no</span>`;
+  const total=c.gopYes+c.demYes;
+  $('wl-status').innerHTML=`Hard yes today: <strong>${total}</strong> (${c.gopYes} R + ${c.demYes} D-caucus) — `+
+    (total>=60?'clears cloture.':`<strong>${60-total} short of 60.</strong> Gettable pool: ${c.leanNoD} Dem-caucus “lean no”s.`)+
+    (storedAt?` <span class="mono">· synced ${new Date(storedAt).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})}</span>`:'');
+  $('wl-apply').style.display='inline-block';
+}
+
+function applyWhip(){
+  if(!WHIP.counts)return;
+  $('w-gop').value=Math.min(53,WHIP.counts.gopYes);
+  $('w-dem').value=Math.min(47,WHIP.counts.demYes);
+  render();
+}
+
+function startWhipWatch(fileId){
+  if(WHIP.unsub)WHIP.unsub();
+  WHIP.unsub=window.claude.mcp.watchTool(DRIVE,'read_file_content',{fileId},ev=>{
+    if(ev.type==='error'){
+      const e=ev.error;
+      if(['needs_reauth','server_not_connected','blocked_by_policy','approval_required'].includes(e.code)){
+        WHIP.counts=null;$('wl-buckets').innerHTML='';$('wl-status').textContent=whipErrMsg(e);   // authz: retract
+      }else{
+        $('wl-status').textContent=(WHIP.counts?'Showing last sync · ':'')+whipErrMsg(e);         // transient: keep last-good
+      }
+      return;
+    }
+    const p=ev.result.payload;
+    const text=p&&p.fileContent?p.fileContent:(typeof p==='string'?p:'');
+    const c=parseWhipSheet(text);
+    if(!c){$('wl-status').textContent='Read the sheet but couldn’t find the “Expected MTP Vote” column — check the header row.';return;}
+    WHIP.counts=c;
+    renderWhipLive(ev.result.cache&&ev.result.cache.storedAt);
+    if(!WHIP.applied){WHIP.applied=true;applyWhip();}
+  },{cache:{staleTime:60000},refetchInterval:180000});
+}
+
+function initWhipLive(){
+  if(!(window.claude&&window.claude.mcp)){
+    $('wl-status').textContent='Live sync runs in the claude.ai artifact (Google Drive connector). Manual sliders in effect here.';
+    return;
+  }
+  $('wl-status').textContent='Looking for Senate_Crypto_Whip_Sheet in your Drive…';
+  window.claude.mcp.callTool(DRIVE,'search_files',
+    {query:"title contains 'Senate_Crypto_Whip_Sheet'"},{cache:{staleTime:60000,gcTime:600000}})
+    .then(res=>{
+      const files=(res.payload&&res.payload.files)||[];
+      if(!files.length){$('wl-status').textContent='Couldn’t find a file named “Senate_Crypto_Whip_Sheet” in your Drive.';return;}
+      startWhipWatch(files[0].id);
+    })
+    .catch(e=>{$('wl-status').textContent=whipErrMsg(e);});
+}
+
+/* ================================================================
    ASK THE PARLIAMENTARIAN (deterministic assistant)
    ================================================================ */
 const KB=[
@@ -926,6 +1052,8 @@ const KB=[
   a:`<p>A <strong>hold</strong> is a senator telling their leader they’ll object to a UC request on a measure — effectively a threatened filibuster. Holds aren’t in the rules; they’re enforced by the leader’s unwillingness to burn a week of floor time calling the bluff. They can be anonymous in practice, secret, stacked, or traded. Clearing holds is exactly what the “hotline” process is for.</p>`},
  {k:['conference','concurrence','goes back to the house','house vote','president','sign'],
   a:`<p>Senate passage isn’t the finish line. If the Senate passed the House bill <em>unchanged</em>, it goes to the President. If the Senate amended it (as with the Banking Committee’s CLARITY substitute), it returns to the House, which must either <strong>concur</strong> in the Senate text, amend it again (more ping-pong), or go to a formal <strong>conference committee</strong> (rare now — convening conference takes three more debatable motions in the Senate). For an August deadline: House concurrence has to be scheduled the same week, or the bill waits for September.</p>`},
+ {k:['russia','sanctions','graham','sanctioning russia'],
+  a:`<p><strong>The Sanctioning Russia Act is the floor story this week.</strong> Introduced July 14, 2026 to honor Sen. Lindsey Graham after his death, it hit 60 cosponsors within two days. Schumer is demanding an immediate vote “in honor of Lindsey,” and Leader Thune says he’s “hopeful.” It would impose 100% secondary tariffs on countries buying Russian oil and gas; the whip count is there — the only question is floor time, which is exactly what your bill needs too. With 60 cosponsors it likely moves under a time agreement in ~3 session days, and a memorial bill for a just-deceased colleague jumps every queue. It’s pre-checked in the Floor Traffic panel with “traffic first” — that’s the realistic baseline. Some Democrats have raised concerns about presidential waiver authority, so watch for slippage that could hand your bill the week back.</p>`},
  {k:['one senator','gum','slow','obstruct','burn the clock','quorum call','stop it up','single senator'],
   a:`<p><strong>How one senator stops it up:</strong> object to every unanimous-consent request (which is how the Senate does 95% of its business), insist on the full 30 hours after every cloture vote, force the clerk to read amendments aloud, note the absence of a quorum repeatedly, and place holds on everything adjacent. None of it defeats a majority that has 60 votes — but it converts a two-day schedule into a two-week one. The counters: file cloture early and in stacks, hold round-the-clock sessions so the clocks burn overnight, keep 51 members near the floor to beat quorum stalls, and dual-track other business. Set the <strong>minority posture</strong> control to “scorched earth” to see the cost modeled.</p>`},
  {k:['shutdown','appropriations','approps','continuing resolution','funding deadline','sep 30','september 30','cr '],
@@ -995,7 +1123,7 @@ async function ask(q){
    WIRE-UP
    ================================================================ */
 ['bill','posture','target','minority','priority','t-yield','t-uc','t-wknd','t-extend','t-msg','t-recon','t-nuke','t-house',
- 'tr-ndaa','tr-approps','tr-noms','w-gop','w-dem']
+ 'tr-russia','tr-ndaa','tr-approps','tr-noms','w-gop','w-dem']
   .forEach(id=>$(id).addEventListener('input',()=>{
     if(id==='bill'){
       $('customName-wrap').hidden=$('bill').value!=='custom';
@@ -1006,6 +1134,7 @@ async function ask(q){
   }));
 $('customName').addEventListener('input',render);
 $('memo-btn').addEventListener('click',downloadMemo);
+$('wl-apply').addEventListener('click',applyWhip);
 $('chatsend').addEventListener('click',()=>ask($('chatin').value));
 $('chatin').addEventListener('keydown',e=>{if(e.key==='Enter')ask($('chatin').value)});
 [['What is cloture?','What is cloture?'],
@@ -1018,8 +1147,9 @@ $('chatin').addEventListener('keydown',e=>{if(e.key==='Enter')ask($('chatin').va
  .forEach(([label,q])=>{const b=document.createElement('button');b.className='chip';b.textContent=label;
    b.addEventListener('click',()=>ask(q));$('chips').appendChild(b);});
 
-addMsg(`<p>Welcome to the floor. I model Senate procedure under the standing rules — Rule XXII cloture clocks, motions to proceed, reconciliation, all of it. The scheduler above is live: it currently shows the regular-order path for <strong>H.R. 3633, the CLARITY Act</strong>, against an <strong>Aug 7</strong> target. Ask me anything, or tap a chip below.</p>`,'bot');
+addMsg(`<p>Welcome to the floor. I model Senate procedure under the standing rules — Rule XXII cloture clocks, motions to proceed, reconciliation, all of it. The scheduler above shows <strong>H.R. 3633, the CLARITY Act</strong> against an <strong>Aug 7 Senate-passage</strong> target, with the <strong>Russia sanctions bill</strong> queued ahead of it on the floor this week. If your Google Drive connector is on, the whip counter is syncing from <strong>Senate_Crypto_Whip_Sheet</strong>. Ask me anything, or tap a chip below.</p>`,'bot');
 render();
+initWhipLive();
 </script>
 
 </body>
