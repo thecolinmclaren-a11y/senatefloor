@@ -1,0 +1,7 @@
+name = "senatefloor-api"
+main = "worker.js"
+compatibility_date = "2026-07-01"
+
+# Secrets (set via `npx wrangler secret put <NAME>`):
+#   ANTHROPIC_API_KEY  — console.anthropic.com
+#   CONGRESS_API_KEY   — https://api.congress.gov/sign-up (free)

@@ -183,6 +183,7 @@ main{padding:26px 0 60px}
 .tl .d-date{font-size:15px;font-weight:800;margin:1px 0 7px}
 .tl .ev{font-size:11px;font-weight:700;line-height:1.3;padding:4px 7px;border-radius:6px;
   margin-bottom:5px;color:var(--chip-ink)}
+.tl .ev.traffic{background:var(--paper2);border:1.5px dashed var(--brass);color:var(--ink2)}
 .tl .gap{width:84px;flex:none;border-radius:10px;display:grid;place-items:center;text-align:center;
   background:repeating-linear-gradient(135deg,var(--paper2) 0 10px,transparent 10px 20px);
   border:1.5px dashed var(--line);color:var(--ink2);
@@ -252,6 +253,10 @@ footer.foot strong{color:var(--ink)}
       <div class="big mono" id="clock-days">—</div>
       <div class="lbl">Session days until<br>August recess</div>
     </div>
+    <div class="shotclock" role="status">
+      <div class="big mono" id="clock-shutdown">—</div>
+      <div class="lbl">Session days until<br>Sep 30 funding deadline</div>
+    </div>
   </div>
 </header>
 
@@ -267,6 +272,7 @@ footer.foot strong{color:var(--ink)}
           <select id="bill">
             <option value="clarity" selected>H.R. 3633 — CLARITY Act (digital asset market structure)</option>
             <option value="budget">Generic budget-reconciliation bill</option>
+            <option value="noms">Executive Calendar — batch of 5 district judges</option>
             <option value="custom">Custom bill…</option>
           </select>
         </div>
@@ -290,6 +296,14 @@ footer.foot strong{color:var(--ink)}
 
       <div class="panel">
         <h2>2 · Strategy Levers</h2>
+        <div class="field">
+          <label for="minority">Minority posture</label>
+          <select id="minority">
+            <option value="std" selected>Standard — contests votes, keeps its time</option>
+            <option value="coop">Cooperative — yields back time, no objections</option>
+            <option value="scorched">Scorched earth — one senator burns every clock</option>
+          </select>
+        </div>
         <label class="tog"><input type="checkbox" id="t-yield">
           <span><span class="t-name"><span class="dot c-violet"></span>Yield back post-cloture time</span><br>
           <span class="t-desc">Both sides agree (by consent) to give back the 30 hours after each cloture vote. Saves ~1 session day per cloture.</span></span></label>
@@ -311,10 +325,35 @@ footer.foot strong{color:var(--ink)}
         <label class="tog"><input type="checkbox" id="t-nuke">
           <span><span class="t-name"><span class="dot c-coral"></span>Nuclear option</span><br>
           <span class="t-desc">Majority creates a new precedent lowering cloture on legislation to 51. Never yet done for legislation.</span></span></label>
+        <label class="tog"><input type="checkbox" id="t-house" checked>
+          <span><span class="t-name"><span class="dot c-teal"></span>Model the House side too</span><br>
+          <span class="t-desc">If the Senate amends the bill, it isn't law until the House concurs — show that path all the way to the President's desk.</span></span></label>
       </div>
 
       <div class="panel">
-        <h2>3 · Whip Count</h2>
+        <h2>3 · Floor Traffic</h2>
+        <p style="font-size:12.5px;color:var(--ink2);margin:0 0 10px">One floor, many demands. Check what
+          else leadership has queued, and where your bill sits in line.</p>
+        <label class="tog"><input type="checkbox" id="tr-ndaa">
+          <span><span class="t-name"><span class="dot c-amber"></span>NDAA floor week</span><br>
+          <span class="t-desc">Annual defense authorization — typically eats a full week (5 session days).</span></span></label>
+        <label class="tog"><input type="checkbox" id="tr-approps">
+          <span><span class="t-name"><span class="dot c-amber"></span>Appropriations / CR</span><br>
+          <span class="t-desc">Government funding runs out Sep 30 — a CR or minibus fight takes ~4 session days and always wins a scheduling conflict.</span></span></label>
+        <label class="tog"><input type="checkbox" id="tr-noms">
+          <span><span class="t-name"><span class="dot c-amber"></span>Nominations batch</span><br>
+          <span class="t-desc">Pending judicial/executive confirmations — ~2 session days of floor time.</span></span></label>
+        <div class="field" style="margin-top:10px">
+          <label for="priority">Who goes first?</label>
+          <select id="priority">
+            <option value="bill" selected>Our bill first — traffic waits</option>
+            <option value="traffic">Traffic first — our bill waits</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>4 · Whip Count</h2>
         <div class="whiprow">
           <label for="w-gop">Republican yes</label>
           <input type="range" id="w-gop" min="0" max="53" value="51">
@@ -358,6 +397,7 @@ footer.foot strong{color:var(--ink)}
           <span><i class="c-green"></i>Passage votes (majority)</span>
           <span><i class="c-coral"></i>Override plays</span>
           <span><i class="c-pink"></i>Consent needed</span>
+          <span><i style="background:var(--paper2);border:1.5px dashed var(--brass)"></i>Competing floor traffic</span>
         </div>
       </section>
 
@@ -365,7 +405,10 @@ footer.foot strong{color:var(--ink)}
         <h2><span class="bar c-green"></span>Your Asks to Senate Leadership</h2>
         <p class="blurb">What you would actually request from the Majority Leader’s office, the cloakrooms,
           and your whip operation to make this schedule real.</p>
-        <div class="panel"><ol class="asks" id="asks"></ol></div>
+        <div class="panel">
+          <ol class="asks" id="asks"></ol>
+          <button class="action-btn" id="memo-btn" style="margin-top:6px">⬇ Download this as a floor memo (.md)</button>
+        </div>
       </section>
 
       <section class="block">
@@ -433,25 +476,84 @@ const BILLS={
     note:'House-passed Jul 17, 2025 (294–134); reported by Senate Banking May 14, 2026 (15–9) with a substitute — so Senate passage sends it BACK to the House for a final concurrence vote before it can reach the President.'},
   budget:{name:'a budget-reconciliation bill', short:'the reconciliation bill', posture:'calendar',
     substitute:false, byrdOK:true, gop:50, dem:0, note:''},
+  noms:{name:'a batch of 5 district-court nominees', short:'the nominations batch', posture:'calendar',
+    substitute:false, byrdOK:false, gop:51, dem:0, note:''},
   custom:{name:'your bill', short:'your bill', posture:'calendar',
     substitute:false, byrdOK:false, gop:51, dem:9, note:''}
 };
+
+const TRAFFIC_ITEMS={ndaa:{label:'NDAA floor time',days:5},approps:{label:'Approps / CR floor time',days:4},noms:{label:'Nominations floor time',days:2}};
 
 // ---------- The engine ----------
 function computePlan(cfg){
   const S=buildSessionDays(cfg);
   const t0=today();
   let i=S.findIndex(d=>+d>=+t0); if(i<0)i=0;
-  const steps=[], boxes=[], asks=[];
+  const steps=[], boxes=[], asks=[], trafficBlocks=[];
   const bill=cfg.bill;
   const clotureVotes=cfg.gop+cfg.dem;
-  const clotureNeed=cfg.nuke?51:60;
+  const isNoms=cfg.key==='noms';
+  const clotureNeed=isNoms?51:(cfg.nuke?51:60);   // noms: majority cloture since the 2013/2017 precedents
   const day=k=>S[Math.min(k,S.length-1)];
-  const dstr=k=>fmt(day(k));
   let blocked=false;
 
   const add=(color,icon,title,body,cite,thresh,di,tlLabel)=>{
     steps.push({color,icon,title,body,cite,thresh,date:day(di),di,tlLabel});};
+
+  // ----- Minority posture -----
+  const scorched=cfg.minority==='scorched';
+  const coop=cfg.minority==='coop';
+  if(coop && !cfg.uc) cfg.yield=true;
+  if(scorched){
+    cfg.yield=false;
+    boxes.push({at:0,kind:'override',title:'One senator is burning every clock — and the counters',
+      body:'A single determined objector cannot ultimately stop a majority with 60 votes, but they can make everything take its maximum time: object to every UC, insist on the full 30 hours post-cloture, force the reading of amendments, demand live quorum calls, and note the absence of a quorum at 2 a.m. Leadership’s counters:',
+      list:['File cloture on everything, early and in stacks — the clocks run concurrently once filed.',
+        'Keep the Senate in session around the clock so the 30-hour clocks burn during objectors’ sleep, not the majority’s floor time.',
+        'Keep 51 senators near the floor to defeat quorum-call stalls and appeals.',
+        'Dual-track other business so the whole agenda doesn’t stall behind one objector (Rule XXII precedents allow the Leader to toggle between measures).'],
+      cost:'Net effect in this model: every post-cloture clock runs full, unanimous consent is off the table, and roughly one extra session day is lost to procedural drag.'});
+    asks.push('Ask leadership to pre-announce round-the-clock sessions and keep 51 members on call — obstruction only works when the majority isn’t willing to outlast it.');
+  }
+
+  // ----- Floor traffic (competition for the same days) -----
+  const traffic=cfg.traffic.map(k=>TRAFFIC_ITEMS[k]);
+  const trafficDays=traffic.reduce((n,t)=>n+t.days,0);
+
+  if(cfg.priority==='traffic' && trafficDays){
+    let k=i;
+    for(const t of traffic){for(let d=0;d<t.days;d++){trafficBlocks.push({date:day(k),label:t.label});k++;}}
+    boxes.push({at:0,kind:'consent',title:`Floor traffic goes first — your bill loses ${trafficDays} session day${trafficDays===1?'':'s'}`,
+      body:`${traffic.map(t=>t.label.replace(' floor time','')).join(', ')} occupy the floor before your bill is called up. The Senate can only do one thing at a time on the floor — this is the real scarcity every ask competes against.`,
+      list:null,cost:'The ask: convince the Leader your bill jumps the queue — or accept the later start date shown below.'});
+    asks.push('Ask the Leader to re-sequence the floor schedule — every competing item ahead of you pushes final passage back day-for-day.');
+    i=k;
+  } else if(cfg.priority==='bill' && trafficDays){
+    asks.push(`Warn leadership: putting your bill first parks ${traffic.map(t=>t.label.replace(' floor time','')).join(', ')} (${trafficDays} session days) behind it — have an answer ready for members whose priorities slip.`);
+  }
+
+  // ----- Executive Calendar: nominations -----
+  if(isNoms){
+    add('teal','▸','Motion to proceed to executive session — non-debatable',
+      'The Leader moves to executive session to take up the first nomination on the Executive Calendar. Unlike a legislative MTP, this motion is NOT debatable — a simple majority and you’re on the nomination.',
+      'Rule XXII; executive-session precedents',{n:51,label:'51 votes'},i,'Exec session (majority)');
+    add('teal','▸','Cloture filed on all five nominations, in a stack',
+      'Petitions of 16 senators on each nomination; the clocks ripen in sequence starting the second session day after filing.',
+      'Rule XXII para. 2',null,i,'Cloture ×5 filed');
+    add('amber','⏱','Cloture invoked — 51 votes per nomination',
+      'Under the 2013 precedent (extended 2017), cloture on nominations is a simple majority, not 60. The vote occurs one hour after convening on the second session day after filing.',
+      'Nov. 21, 2013 precedent',{n:51,label:'51 votes'},i+2,'CLOTURE (51) ×5');
+    add('violet','◈','Post-cloture: 2 hours per district judge',
+      'Since the 2019 precedent, post-cloture time on district judges and most sub-cabinet nominees is capped at 2 hours (it remains 30 hours for circuit judges, SCOTUS, and cabinet). Five nominees ≈ 10 hours — about one session day, unless yielded back.',
+      'Apr. 3, 2019 precedent (S.Res. 50 procedure)',null,i+2,'Post-cloture 2h ×5');
+    const confDay=cfg.yield?i+2:i+3;
+    add('green','★','Confirmation votes — majority each',
+      'The Senate confirms each nominee by simple majority, usually stacking the votes. By unanimous consent, uncontroversial batches are often confirmed en bloc by voice vote in minutes — that is why the UC lever matters so much on nominations.',
+      'Art. II §2',{n:51,label:'51 votes'},confDay,'CONFIRMED ×5');
+    asks.push('Ask the cloakrooms to hotline an en-bloc UC first — 90% of nominations clear by voice vote, and the cloture machinery above is only for the contested ones.');
+    asks.push('Ask the Leader to file all five cloture petitions the same afternoon so the ripening clocks run concurrently.');
+    return {steps,boxes,asks,S,finalDi:confDay,blocked:false,clotureNeed,clotureVotes,trafficBlocks};
+  }
 
   // ----- Nuclear option box (if armed) -----
   if(cfg.nuke){
@@ -488,7 +590,7 @@ function computePlan(cfg){
         'Simple majority; the Vice President can break a 50–50 tie.', 'Art. I §3',{n:51,label:'51 votes'},i+2,'FINAL PASSAGE');
       asks.push('Ask Budget Committee leadership for reconciliation instructions covering this measure in the FY2027 budget resolution.');
       asks.push('Ask the Parliamentarian’s office for an early Byrd-rule scrub of the bill text.');
-      return {steps,boxes,asks,S,finalDi:i+2,blocked:false,clotureNeed,clotureVotes};
+      return {steps,boxes,asks,S,finalDi:i+2,blocked:false,clotureNeed,clotureVotes,trafficBlocks};
     }
   }
 
@@ -513,7 +615,12 @@ function computePlan(cfg){
   }
 
   // ----- Proceeding to the bill -----
-  if(cfg.uc){
+  if(cfg.uc && scorched){
+    boxes.push({at:steps.length,kind:'consent',title:'Your UC agreement is dead on arrival',
+      body:'A global consent agreement requires zero objections — and the scorched-earth posture you selected means at least one senator objects to everything. The model falls back to the full cloture path below.',
+      list:null,cost:'Fix: buy off the objector (an amendment vote, a nomination, a home-state project) or outlast them.'});
+  }
+  if(cfg.uc && !scorched){
     boxes.push({at:steps.length,kind:'consent',title:'Everything below happens only if NO senator objects',
       body:'A global unanimous-consent agreement replaces every cloture clock: it makes the bill the pending business, sets a finite amendment list, caps debate, and locks vote times. The cloakrooms “hotline” it to all 100 offices — a single objection (or an anonymous hold) kills it and you fall back to the cloture path.',
       list:null,cost:'Watch for: Sens. Paul and Hawley have both signaled objections to this bill — a UC likely gets blocked unless their price is paid.'});
@@ -532,7 +639,9 @@ function computePlan(cfg){
       null,{n:51,label:'51 votes'},amendDay+1,'FINAL PASSAGE');
     asks.push('Ask both cloakrooms to hotline the consent agreement early in the week and report back every objection so you can negotiate them down one by one.');
     asks.push('Prepare a fallback cloture schedule in case the UC is blocked — file the same day the objection lands.');
-    return {steps,boxes,asks,S,finalDi:amendDay+1,blocked:false,clotureNeed,clotureVotes};
+    let ucFinal=amendDay+1;
+    if(bill.substitute&&cfg.house) ucFinal=addHouseSteps(add,asks,ucFinal,day);
+    return {steps,boxes,asks,S,finalDi:ucFinal,blocked:false,clotureNeed,clotureVotes,trafficBlocks};
   }
 
   const yieldBack=cfg.yield;
@@ -559,6 +668,13 @@ function computePlan(cfg){
         'Rule XXII para. 2',{n:51,label:'51 votes'},i+3,'MTP adopted');
     }
     i=yieldBack?i+2:i+3;
+  }
+
+  if(scorched){
+    add('coral','⛔','Obstruction drag: quorum calls, forced readings, denied consents',
+      'The objector notes the absence of a quorum, forces the clerk to read amendments in full, and objects to every routine consent — none of it changes the outcome, all of it costs the majority roughly a session day.',
+      'Rules VI, XV; standing practice',null,i+1,'Obstruction drag');
+    i+=1;
   }
 
   // ----- On the bill -----
@@ -593,9 +709,22 @@ function computePlan(cfg){
     asks.push('Coordinate with House leadership NOW on same-week concurrence with the Senate substitute — Senate passage alone does not make law, and the House leaves for recess too.');
   }
   if(cfg.wknd) asks.push('Ask the Leader to announce weekend sessions in advance — Saturday and Sunday count as session days for ripening cloture, buying back the calendar.');
-  if(cfg.extend) asks.push('Ask leadership to formally delay the state work period — politically expensive in a midterm year, so pair it with a public message about why the bill can’t wait for September.');
+  if(cfg.extend) asks.push('Ask leadership to formally delay the state work period — the Leader controls the schedule, and no senator can force an adjournment; but members can make extended sessions painful by denying quorums, so pair the ask with a public message about why the bill can’t wait for September.');
 
-  return {steps,boxes,asks,S,finalDi,blocked,clotureNeed,clotureVotes};
+  if(bill.substitute && cfg.house && !blocked) finalDi=addHouseSteps(add,asks,finalDi,day);
+
+  return {steps,boxes,asks,S,finalDi,blocked,clotureNeed,clotureVotes,trafficBlocks};
+}
+
+function addHouseSteps(add,asks,fromDi,day){
+  add('teal','▸','Across the Rotunda: House Rules Committee tees up concurrence',
+    'Because the Senate passed an amended text, it is not law yet — the House must pass the identical Senate text. The Rules Committee (which the Speaker controls) reports a same-day rule; alternatively leadership uses suspension of the rules, which is faster but needs a two-thirds vote. Dates shown assume the House is in session — check its calendar, because the House leaves for recess too.',
+    'House Rule XIII; suspension practice',{n:218,label:'218 (or 2/3)'},fromDi+1,'House concurrence vote');
+  add('green','★','To the President’s desk',
+    'The House concurs in the Senate amendment; the enrolled bill is signed by the Speaker and the Vice President and presented to the President, who has ten days (Sundays excepted) to sign or veto.',
+    'Art. I §7',null,fromDi+1,'TO THE PRESIDENT');
+  asks.push('Ask the Speaker’s office to pre-commit Rules Committee time for same-week concurrence — Senate passage without a House vote just strands the bill until September.');
+  return fromDi+1;
 }
 
 /* ================================================================
@@ -610,7 +739,9 @@ function currentCfg(){
   return {bill, key, posture:$('posture').value,
     yield:$('t-yield').checked, uc:$('t-uc').checked, wknd:$('t-wknd').checked,
     weekends:$('t-wknd').checked, extend:$('t-extend').checked, msg:$('t-msg').checked,
-    recon:$('t-recon').checked, nuke:$('t-nuke').checked,
+    recon:$('t-recon').checked, nuke:$('t-nuke').checked, house:$('t-house').checked,
+    minority:$('minority').value, priority:$('priority').value,
+    traffic:['ndaa','approps','noms'].filter(k=>$('tr-'+k).checked),
     gop:+$('w-gop').value, dem:+$('w-dem').value,
     target:new Date($('target').value+'T00:00:00Z')};
 }
@@ -620,10 +751,19 @@ function render(){
   const R=computePlan(cfg);
   const finalDate=R.steps.length?R.steps[R.steps.length-1].date:null;
 
-  // shot clock
+  // shot clocks
   const t=today();
-  const preRecess=buildSessionDays({}).filter(d=>+d>=+t&&+d<+RECESS_START).length;
-  $('clock-days').textContent=preRecess;
+  const baseDays=buildSessionDays({});
+  $('clock-days').textContent=baseDays.filter(d=>+d>=+t&&+d<+RECESS_START).length;
+  const SEP30=new Date(Date.UTC(2026,8,30));
+  $('clock-shutdown').textContent=baseDays.filter(d=>+d>=+t&&+d<=+SEP30).length;
+
+  // bill-first traffic occupies days after final passage
+  if(cfg.priority==='bill'&&cfg.traffic.length&&R.steps.length&&!cfg.recon){
+    let k=R.finalDi+1;
+    for(const key of cfg.traffic){const tr=TRAFFIC_ITEMS[key];
+      for(let d=0;d<tr.days;d++){R.trafficBlocks.push({date:R.S[Math.min(k,R.S.length-1)],label:tr.label});k++;}}
+  }
 
   // whip bar
   const tot=cfg.gop+cfg.dem;
@@ -670,6 +810,43 @@ function render(){
 
   renderTimeline(R,cfg);
   $('asks').innerHTML=R.asks.map(a=>`<li>${a}</li>`).join('');
+  LAST={R,cfg};
+}
+
+/* ================================================================
+   FLOOR MEMO EXPORT
+   ================================================================ */
+let LAST=null;
+function buildMemo(){
+  if(!LAST) return '';
+  const {R,cfg}=LAST;
+  const strip=h=>{const d=document.createElement('div');d.innerHTML=h;return d.textContent.replace(/\s+/g,' ').trim();};
+  const finalDate=R.steps.length?R.steps[R.steps.length-1].date:null;
+  let md=`# Floor memo: ${cfg.bill.name}\n\n`;
+  md+=`**Target:** final passage by ${fmt(cfg.target)}. `;
+  md+=finalDate?`**Modeled outcome:** ${R.blocked?'BLOCKED on the whip count':'lands '+fmt(finalDate)}.\n\n`:'\n\n';
+  md+=`**Whip count:** ${cfg.gop} R + ${cfg.dem} D-caucus = ${R.clotureVotes} (cloture threshold on this path: ${R.clotureNeed}).\n\n`;
+  md+=`## The path\n\n`;
+  R.steps.forEach((s,i)=>{md+=`${i+1}. **${fmt(s.date)} — ${s.title}**${s.thresh?` _(${s.thresh.label})_`:''}\n   ${strip(s.body)}${s.cite?` _(${s.cite})_`:''}\n`;});
+  if(R.boxes.length){md+=`\n## Rule overrides & consent points\n\n`;
+    R.boxes.forEach(b=>{md+=`- **${b.title}.** ${strip(b.body)}${b.list?' '+b.list.map((x,i)=>`(${i+1}) ${strip(x)}`).join(' '):''}${b.cost?` — _${strip(b.cost)}_`:''}\n`;});}
+  md+=`\n## Asks to leadership\n\n`;
+  R.asks.forEach((a,i)=>{md+=`${i+1}. ${strip(a)}\n`;});
+  md+=`\n---\n_Generated by the Senate Floor Scheduler. Procedure per Senate Rule XXII, Rule XIV, the Congressional Budget Act, and CRS reports on floor practice. A planning model — not a guarantee of floor behavior._\n`;
+  return md;
+}
+async function downloadMemo(){
+  const md=buildMemo(); if(!md)return;
+  const name='floor-memo-'+(LAST.cfg.key||'bill')+'.md';
+  const dl=window.claude&&window.claude.downloads;
+  if(dl){
+    try{await dl.save({filename:name,data:md});return;}
+    catch(e){if(e&&(e.code==='declined'||e.code==='rate_limited'))return;/* else fall through */}
+  }
+  const url=URL.createObjectURL(new Blob([md],{type:'text/markdown'}));
+  const a=document.createElement('a');a.href=url;a.download=name;
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),4000);
 }
 
 function renderBox(b){
@@ -685,7 +862,10 @@ function renderTimeline(R,cfg){
   const t=today();
   const events={};
   R.steps.forEach(s=>{const k=+s.date;(events[k]=events[k]||[]).push(s);});
-  const lastShown=R.steps.length?new Date(Math.max(+R.steps[R.steps.length-1].date,+cfg.target)):cfg.target;
+  const trafficEv={};
+  (R.trafficBlocks||[]).forEach(b=>{const k=+b.date;(trafficEv[k]=trafficEv[k]||[]).push(b.label);});
+  let lastShown=R.steps.length?new Date(Math.max(+R.steps[R.steps.length-1].date,+cfg.target)):cfg.target;
+  (R.trafficBlocks||[]).forEach(b=>{if(+b.date>+lastShown)lastShown=b.date;});
   let gapShown=false, out='';
   for(const d of R.S){
     if(+d< +t) continue;
@@ -698,11 +878,12 @@ function renderTimeline(R,cfg){
     const isWknd=d.getUTCDay()===0||d.getUTCDay()===6;
     const isToday=+d===+t;
     const evs=(events[+d]||[]).map(s=>`<div class="ev c-${s.color}">${s.tlLabel}</div>`).join('');
+    const trf=[...new Set(trafficEv[+d]||[])].map(l=>`<div class="ev traffic">${l}</div>`).join('');
     const tgt=+d===+cfg.target?`<div class="ev" style="background:var(--brass);color:var(--chip-ink)">🎯 TARGET</div>`:'';
     out+=`<div class="day ${isToday?'today':''} ${isWknd?'wknd':''}">
       <div class="d-dow">${dow}${isToday?' · today':''}</div>
       <div class="d-date mono">${d.toLocaleDateString('en-US',{month:'short',day:'numeric',timeZone:'UTC'})}</div>
-      ${evs}${tgt}</div>`;
+      ${evs}${trf}${tgt}</div>`;
   }
   tl.innerHTML=out;
 }
@@ -745,6 +926,16 @@ const KB=[
   a:`<p>A <strong>hold</strong> is a senator telling their leader they’ll object to a UC request on a measure — effectively a threatened filibuster. Holds aren’t in the rules; they’re enforced by the leader’s unwillingness to burn a week of floor time calling the bluff. They can be anonymous in practice, secret, stacked, or traded. Clearing holds is exactly what the “hotline” process is for.</p>`},
  {k:['conference','concurrence','goes back to the house','house vote','president','sign'],
   a:`<p>Senate passage isn’t the finish line. If the Senate passed the House bill <em>unchanged</em>, it goes to the President. If the Senate amended it (as with the Banking Committee’s CLARITY substitute), it returns to the House, which must either <strong>concur</strong> in the Senate text, amend it again (more ping-pong), or go to a formal <strong>conference committee</strong> (rare now — convening conference takes three more debatable motions in the Senate). For an August deadline: House concurrence has to be scheduled the same week, or the bill waits for September.</p>`},
+ {k:['one senator','gum','slow','obstruct','burn the clock','quorum call','stop it up','single senator'],
+  a:`<p><strong>How one senator stops it up:</strong> object to every unanimous-consent request (which is how the Senate does 95% of its business), insist on the full 30 hours after every cloture vote, force the clerk to read amendments aloud, note the absence of a quorum repeatedly, and place holds on everything adjacent. None of it defeats a majority that has 60 votes — but it converts a two-day schedule into a two-week one. The counters: file cloture early and in stacks, hold round-the-clock sessions so the clocks burn overnight, keep 51 members near the floor to beat quorum stalls, and dual-track other business. Set the <strong>minority posture</strong> control to “scorched earth” to see the cost modeled.</p>`},
+ {k:['shutdown','appropriations','approps','continuing resolution','funding deadline','sep 30','september 30','cr '],
+  a:`<p><strong>The Sep 30 funding cliff eats floor time.</strong> Government funding expires at the end of the fiscal year; if appropriations bills or a continuing resolution aren’t done, the government shuts down — so an approps fight always wins a scheduling conflict against everything else. The second shot-clock in the header counts session days to the deadline. Toggle <strong>Appropriations/CR</strong> in the Floor Traffic panel to see what it does to your bill’s lane.</p>`},
+ {k:['ndaa','defense authorization','floor traffic','competition','one thing at a time','queue'],
+  a:`<p><strong>The floor does one thing at a time.</strong> The NDAA (which has passed annually for 60+ years), appropriations, treaties, and nominations all compete for the same session days your bill needs. The Majority Leader’s scarcest resource isn’t votes — it’s floor time. Use the <strong>Floor Traffic</strong> panel to queue competing items and choose who goes first; the timeline shows the crowd-out day by day.</p>`},
+ {k:['nomination','judge','confirm','executive calendar','2 hour','en bloc'],
+  a:`<p><strong>Nominations run on a faster track.</strong> The motion to go to executive session is non-debatable; since 2013/2017 cloture on ALL nominations is a simple majority (51); and since 2019 post-cloture time is just <strong>2 hours</strong> for district judges and most sub-cabinet posts (still 30 hours for circuit judges, SCOTUS, and cabinet). Uncontroversial batches are confirmed en bloc by voice vote via UC. Pick <strong>“Executive Calendar — batch of 5 district judges”</strong> in the bill selector to see it modeled.</p>`},
+ {k:['keep the senate in','cancel recess','delay recess','stay in session','past recess','work period'],
+  a:`<p><strong>Can the Leader keep the Senate past a recess?</strong> Yes — recesses are set by consent or resolution, and the Leader controls the schedule; leaders have cut or threatened to cut the August recess in crunch years (2018, 2025). No senator can force an adjournment. What individual members CAN do is make it painful: deny quorums (51 must be present to do business), object to everything, and grumble to the press in an election year. Toggle <strong>“Delay the August recess”</strong> to add the work days to the model.</p>`},
  {k:['help','what can','how do i','what is this'],
   a:`<p>I can explain any floor mechanic (try “cloture,” “filling the tree,” “ping-pong,” “nuclear option,” “reconciliation,” “holds”), report bill status (“where does CLARITY stand?”), or run a scenario (“pass the CLARITY Act before the August recess”). The scheduler above updates live as you flip the strategy levers — red-striped boxes show rule overrides, pink-striped boxes show where you need consent.</p>`}
 ];
@@ -771,9 +962,29 @@ function addMsg(html,who){
   div.innerHTML=who==='bot'?`<div class="who">Parliamentarian’s desk</div>${html}`:esc(html);
   log.appendChild(div);log.scrollTop=log.scrollHeight;return div;
 }
-function ask(q){
+/* Live backend (optional): "connect api https://your-worker.example.com" wires the chat
+   to a Claude-powered endpoint and the scheduler to live bill status. See server/worker.js. */
+const LIVE={apiBase:localStorage.getItem('floorApiBase')||''};
+async function liveChat(q){
+  const res=await fetch(LIVE.apiBase.replace(/\/$/,'')+'/api/chat',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({question:q,state:LAST?{bill:LAST.cfg.key,memo:buildMemo()}:null})});
+  if(!res.ok)throw new Error('api '+res.status);
+  const j=await res.json();return j.answer;
+}
+async function ask(q){
   if(!q.trim())return;
   addMsg(q,'user');$('chatin').value='';
+  const m=q.toLowerCase().match(/^connect api\s+(\S+)/);
+  if(m){LIVE.apiBase=m[1];localStorage.setItem('floorApiBase',m[1]);
+    addMsg(`<p>Connected to <strong>${esc(m[1])}</strong>. Free-form questions now go to the live Claude-powered backend; I’ll fall back to my built-in answers if it’s unreachable. Say <strong>“disconnect api”</strong> to go back.</p>`,'bot');return;}
+  if(/^disconnect api/.test(q.toLowerCase())){LIVE.apiBase='';localStorage.removeItem('floorApiBase');
+    addMsg('<p>Disconnected — back to the built-in parliamentarian.</p>','bot');return;}
+  if(LIVE.apiBase){
+    const wait=addMsg('<p><em>Consulting the live parliamentarian…</em></p>','bot');
+    try{const ans=await liveChat(q);wait.innerHTML=`<div class="who">Parliamentarian’s desk · live</div>${ans}`;return;}
+    catch(_){wait.remove();/* fall through to built-in */}
+  }
   const e=botReply(q);
   const div=addMsg(e.a,'bot');
   if(e.act){const b=document.createElement('button');b.className='action-btn';b.textContent=e.act.label;
@@ -783,7 +994,8 @@ function ask(q){
 /* ================================================================
    WIRE-UP
    ================================================================ */
-['bill','posture','target','t-yield','t-uc','t-wknd','t-extend','t-msg','t-recon','t-nuke','w-gop','w-dem']
+['bill','posture','target','minority','priority','t-yield','t-uc','t-wknd','t-extend','t-msg','t-recon','t-nuke','t-house',
+ 'tr-ndaa','tr-approps','tr-noms','w-gop','w-dem']
   .forEach(id=>$(id).addEventListener('input',()=>{
     if(id==='bill'){
       $('customName-wrap').hidden=$('bill').value!=='custom';
@@ -793,6 +1005,7 @@ function ask(q){
     render();
   }));
 $('customName').addEventListener('input',render);
+$('memo-btn').addEventListener('click',downloadMemo);
 $('chatsend').addEventListener('click',()=>ask($('chatin').value));
 $('chatin').addEventListener('keydown',e=>{if(e.key==='Enter')ask($('chatin').value)});
 [['What is cloture?','What is cloture?'],
@@ -800,6 +1013,7 @@ $('chatin').addEventListener('keydown',e=>{if(e.key==='Enter')ask($('chatin').va
  ['What’s “filling the tree”?','What is filling the amendment tree?'],
  ['Why not reconciliation?','Why can’t we use reconciliation for the CLARITY Act?'],
  ['The nuclear option','How does the nuclear option work?'],
+ ['One senator vs. the floor','How can one senator gum up the works, and what are the counters?'],
  ['What happens after Senate passage?','What happens after the Senate passes the bill — does it go to the President?']]
  .forEach(([label,q])=>{const b=document.createElement('button');b.className='chip';b.textContent=label;
    b.addEventListener('click',()=>ask(q));$('chips').appendChild(b);});
