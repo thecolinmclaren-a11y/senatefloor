@@ -171,9 +171,12 @@ main{padding:26px 0 60px}
   background:repeating-linear-gradient(135deg,var(--coral) 0 8px,transparent 8px 16px)}
 .obox.consent{border-color:var(--pink);background:var(--pink-bg)}
 .obox.consent::before{background:repeating-linear-gradient(135deg,var(--pink) 0 8px,transparent 8px 16px)}
+.obox.note{border-color:var(--brass);background:var(--amber-bg)}
+.obox.note::before{background:repeating-linear-gradient(135deg,var(--brass) 0 8px,transparent 8px 16px)}
 .obox .o-tag{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;
   color:var(--coral);display:flex;align-items:center;gap:7px}
 .obox.consent .o-tag{color:var(--pink)}
+.obox.note .o-tag{color:var(--brass)}
 .obox h4{margin:5px 0 4px;font-size:15.5px}
 .obox p{margin:0;font-size:13.5px;color:var(--ink2);line-height:1.5}
 .obox ol{margin:8px 0 0;padding-left:20px;font-size:13.5px;color:var(--ink2)}
@@ -544,10 +547,9 @@ function computePlan(cfg){
   if(cfg.priority==='traffic' && trafficDays){
     let k=i;
     for(const t of traffic){for(let d=0;d<t.days;d++){trafficBlocks.push({date:day(k),label:t.label});k++;}}
-    boxes.push({at:0,kind:'consent',title:`Floor traffic goes first — your bill loses ${trafficDays} session day${trafficDays===1?'':'s'}`,
+    boxes.push({at:0,kind:'note',id:'traffic',title:`Floor traffic goes first — your bill starts ${trafficDays} session day${trafficDays===1?'':'s'} later`,
       body:`${traffic.map(t=>t.label.replace(' floor time','')).join(', ')} occupy the floor before your bill is called up. The Senate can only do one thing at a time on the floor — this is the real scarcity every ask competes against.`,
-      list:null,cost:'The ask: convince the Leader your bill jumps the queue — or accept the later start date shown below.'});
-    asks.push('Ask the Leader to re-sequence the floor schedule — every competing item ahead of you pushes final passage back day-for-day.');
+      list:null,cost:''});
     i=k;
   } else if(cfg.priority==='bill' && trafficDays){
     asks.push(`Warn leadership: putting your bill first parks ${traffic.map(t=>t.label.replace(' floor time','')).join(', ')} (${trafficDays} session days) behind it — have an answer ready for members whose priorities slip.`);
@@ -812,6 +814,19 @@ function render(){
     body='The rules-conforming schedule overshoots your date. Cheapest fixes, in order: yield back post-cloture time (saves ~2 days), weekend sessions, a global UC, jumping the traffic queue, or — the big ask — delaying the recess.';}
   $('verdict').innerHTML=`<div class="verdict ${cls}"><div class="v-head">${head}</div><div class="v-body">${body}</div></div>`;
 
+  // the traffic box's "so what" depends on whether the wait actually costs you the target
+  const tb=R.boxes.find(b=>b.id==='traffic');
+  if(tb){
+    if(R.blocked){
+      tb.cost='Sequencing isn’t your binding constraint right now — the whip count is. Fix the votes; revisit the queue once you can clear cloture.';
+    } else if(madeIt){
+      tb.cost=`No conflict with your target: the schedule below absorbs the wait and still lands ${fmt(senateDate)}. Jumping the queue isn’t a needed ask — it would only buy back cushion.`;
+    } else {
+      tb.cost='This wait is what pushes you past your target. The ask: convince the Leader your bill jumps the queue — or claw the days back with time agreements (yield-back, weekend sessions).';
+      R.asks.unshift('Ask the Leader to re-sequence the floor queue — every competing item ahead of you pushes your Senate vote back day-for-day.');
+    }
+  }
+
   // steps + boxes
   const flow=$('plan'); flow.innerHTML='';
   const boxAt=k=>R.boxes.filter(b=>b.at===k).map(renderBox).join('');
@@ -874,8 +889,11 @@ async function downloadMemo(){
 }
 
 function renderBox(b){
-  return `<div class="obox ${b.kind==='consent'?'consent':''}">
-    <div class="o-tag">${b.kind==='consent'?'⚑ Unanimous consent required':'⚡ Rule override — how it would actually happen'}</div>
+  const tag=b.kind==='consent'?'⚑ Unanimous consent required'
+    :b.kind==='note'?'⏳ Floor reality — the Leader’s queue, not a rule'
+    :'⚡ Rule override — how it would actually happen';
+  return `<div class="obox ${b.kind==='consent'?'consent':b.kind==='note'?'note':''}">
+    <div class="o-tag">${tag}</div>
     <h4>${b.title}</h4><p>${b.body}</p>
     ${b.list?'<ol>'+b.list.map(x=>`<li>${x}</li>`).join('')+'</ol>':''}
     ${b.cost?`<p class="o-cost">${b.cost}</p>`:''}</div>`;
