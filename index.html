@@ -1,0 +1,812 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Senate Floor Scheduler — Rule-Conforming Bill Scheduling</title>
+<style>
+/* ============ TOKENS ============ */
+:root{
+  --paper:#F6F3EB; --paper2:#EFEADF;
+  --ink:#182038; --ink2:#4A5370; --line:#D8D2C2;
+  --card:#FFFFFF; --card2:#FBF9F2;
+  --brass:#8A6A1F; --brass-bright:#B8860B;
+  --teal:#0E8A7B; --amber:#9A6E00; --violet:#5F4BC9; --green:#177D52; --coral:#C93A22; --pink:#B01E67;
+  --teal-bg:#DDF3EF; --amber-bg:#F7ECCB; --violet-bg:#E9E4FB; --green-bg:#DCF2E6; --coral-bg:#FBE3DD; --pink-bg:#F9DEEB;
+  --chip-ink:#FFFFFF;
+  --shadow:0 1px 3px rgba(24,32,56,.10), 0 8px 24px rgba(24,32,56,.06);
+  --radius:10px;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --paper:#0E1630; --paper2:#0A1126;
+    --ink:#EDEAF7; --ink2:#A8B0CC; --line:#2A3355;
+    --card:#161F3D; --card2:#1B2547;
+    --brass:#E4B458; --brass-bright:#F0C978;
+    --teal:#2CC8B4; --amber:#F5B301; --violet:#9D8CFF; --green:#3ED598; --coral:#FF5D45; --pink:#F472B6;
+    --teal-bg:#123B3F; --amber-bg:#3D3113; --violet-bg:#2A2650; --green-bg:#14382B; --coral-bg:#43201C; --pink-bg:#3D1B31;
+    --chip-ink:#0E1630;
+    --shadow:0 1px 3px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.25);
+  }
+}
+:root[data-theme="light"]{
+  --paper:#F6F3EB; --paper2:#EFEADF;
+  --ink:#182038; --ink2:#4A5370; --line:#D8D2C2;
+  --card:#FFFFFF; --card2:#FBF9F2;
+  --brass:#8A6A1F; --brass-bright:#B8860B;
+  --teal:#0E8A7B; --amber:#9A6E00; --violet:#5F4BC9; --green:#177D52; --coral:#C93A22; --pink:#B01E67;
+  --teal-bg:#DDF3EF; --amber-bg:#F7ECCB; --violet-bg:#E9E4FB; --green-bg:#DCF2E6; --coral-bg:#FBE3DD; --pink-bg:#F9DEEB;
+  --chip-ink:#FFFFFF;
+  --shadow:0 1px 3px rgba(24,32,56,.10), 0 8px 24px rgba(24,32,56,.06);
+}
+:root[data-theme="dark"]{
+  --paper:#0E1630; --paper2:#0A1126;
+  --ink:#EDEAF7; --ink2:#A8B0CC; --line:#2A3355;
+  --card:#161F3D; --card2:#1B2547;
+  --brass:#E4B458; --brass-bright:#F0C978;
+  --teal:#2CC8B4; --amber:#F5B301; --violet:#9D8CFF; --green:#3ED598; --coral:#FF5D45; --pink:#F472B6;
+  --teal-bg:#123B3F; --amber-bg:#3D3113; --violet-bg:#2A2650; --green-bg:#14382B; --coral-bg:#43201C; --pink-bg:#3D1B31;
+  --chip-ink:#0E1630;
+  --shadow:0 1px 3px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.25);
+}
+
+/* ============ BASE ============ */
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  -webkit-font-smoothing:antialiased}
+.serif{font-family:"Iowan Old Style","Palatino Linotype","Book Antiqua",Palatino,Georgia,serif}
+.mono{font-family:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;font-variant-numeric:tabular-nums}
+h1,h2,h3{text-wrap:balance;margin:0}
+button{font:inherit;cursor:pointer}
+input,select{font:inherit;color:inherit}
+a{color:var(--brass)}
+:focus-visible{outline:3px solid var(--amber);outline-offset:2px;border-radius:4px}
+@media (prefers-reduced-motion: reduce){ *{animation:none!important;transition:none!important} }
+
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px}
+
+/* ============ HEADER ============ */
+header.masthead{
+  background:linear-gradient(135deg,#101A38 0%, #1B2B5E 55%, #232B6E 100%);
+  color:#F2EFFC;border-bottom:4px solid var(--brass-bright);
+}
+:root[data-theme="light"] header.masthead{border-bottom-color:#B8860B}
+.mast-inner{display:flex;flex-wrap:wrap;align-items:center;gap:18px;padding:26px 0 22px}
+.seal{width:58px;height:58px;border-radius:50%;flex:none;
+  background:radial-gradient(circle at 35% 30%, #3D53A8, #16204A 70%);
+  border:2px solid #E4B458;display:grid;place-items:center;
+  font-family:Georgia,serif;font-weight:700;font-size:20px;color:#E4B458;letter-spacing:.5px}
+.mast-title{flex:1 1 320px;min-width:260px}
+.eyebrow{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:#E4B458;font-weight:600}
+h1.serif{font-size:clamp(26px,4vw,38px);line-height:1.12;font-weight:600;color:#FDFCF7}
+.mast-sub{margin:6px 0 0;color:#B9C2E4;font-size:14.5px;max-width:56ch}
+.shotclock{flex:none;text-align:center;background:rgba(228,180,88,.12);
+  border:1px solid rgba(228,180,88,.55);border-radius:12px;padding:12px 20px;min-width:170px}
+.shotclock .big{font-size:34px;font-weight:700;color:#F0C978;line-height:1}
+.shotclock .lbl{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#CBB27A;margin-top:5px}
+
+/* ============ LAYOUT ============ */
+main{padding:26px 0 60px}
+.cols{display:grid;grid-template-columns:340px minmax(0,1fr);gap:24px;align-items:start}
+.cols>*{min-width:0}
+@media (max-width:900px){ .cols{grid-template-columns:minmax(0,1fr)} }
+.rail{position:sticky;top:14px;display:flex;flex-direction:column;gap:16px}
+@media (max-width:900px){ .rail{position:static} }
+
+.panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+  box-shadow:var(--shadow);padding:18px}
+.panel h2{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--brass);
+  font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.panel h2::after{content:"";flex:1;height:1px;background:var(--line)}
+
+.field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+.field label{font-size:12.5px;font-weight:600;color:var(--ink2);letter-spacing:.02em}
+.field select,.field input[type="date"],.field input[type="text"]{
+  padding:9px 10px;border:1.5px solid var(--line);border-radius:8px;background:var(--card2);width:100%}
+
+/* toggles */
+.tog{display:flex;gap:10px;align-items:flex-start;padding:9px 10px;border:1.5px solid var(--line);
+  border-radius:8px;margin-bottom:8px;background:var(--card2);cursor:pointer;transition:border-color .15s}
+.tog:hover{border-color:var(--brass)}
+.tog input{margin-top:3px;accent-color:var(--brass);width:16px;height:16px;flex:none}
+.tog .t-name{font-weight:600;font-size:14px}
+.tog .t-desc{font-size:12.5px;color:var(--ink2);line-height:1.4}
+.tog .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px}
+
+/* whip */
+.whiprow{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.whiprow label{flex:1;font-size:13.5px;font-weight:600}
+.whiprow input[type="range"]{flex:2;accent-color:var(--brass)}
+.whiprow output{width:34px;text-align:right;font-weight:700}
+.votebar{height:26px;border-radius:13px;background:var(--card2);border:1px solid var(--line);
+  position:relative;overflow:hidden;margin-top:6px}
+.votebar .fill{position:absolute;inset:0 auto 0 0;border-radius:13px;transition:width .3s}
+.votebar .mark{position:absolute;top:-4px;bottom:-4px;width:2.5px;background:var(--ink)}
+.votebar .mark::after{content:attr(data-l);position:absolute;top:100%;left:50%;transform:translateX(-50%);
+  font-size:10px;font-weight:700;color:var(--ink2)}
+.votelegend{display:flex;justify-content:space-between;font-size:12px;color:var(--ink2);margin-top:14px}
+
+/* ============ PLAN ============ */
+.flow{display:flex;flex-direction:column;gap:0}
+.verdict{border-radius:var(--radius);padding:16px 18px;margin-bottom:18px;font-size:15px;
+  border:1.5px solid;box-shadow:var(--shadow)}
+.verdict.ok{background:var(--green-bg);border-color:var(--green)}
+.verdict.warn{background:var(--amber-bg);border-color:var(--amber)}
+.verdict.fail{background:var(--coral-bg);border-color:var(--coral)}
+.verdict .v-head{font-weight:700;font-size:17px;display:flex;align-items:center;gap:10px}
+.verdict .v-body{margin-top:6px;color:var(--ink)}
+
+.step{display:grid;grid-template-columns:54px 1fr;gap:0 14px;position:relative}
+.step .spine{display:flex;flex-direction:column;align-items:center}
+.step .node{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;
+  font-weight:800;font-size:14px;color:var(--chip-ink);flex:none;z-index:1;
+  box-shadow:0 0 0 4px var(--paper)}
+.step .cord{width:4px;flex:1;border-radius:2px;opacity:.45;min-height:14px}
+.step:last-child .cord{visibility:hidden}
+.stepcard{background:var(--card);border:1px solid var(--line);border-left-width:5px;
+  border-radius:var(--radius);box-shadow:var(--shadow);padding:14px 16px;margin-bottom:14px}
+.stepcard .s-top{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:4px}
+.stepcard .s-date{font-size:12px;font-weight:700;padding:3px 9px;border-radius:6px;
+  background:var(--paper2);border:1px solid var(--line)}
+.stepcard h3{font-size:16.5px;font-weight:700}
+.stepcard .s-body{font-size:14px;color:var(--ink2);margin:4px 0 0;line-height:1.5}
+.stepcard .s-cite{font-size:12px;color:var(--brass);margin-top:7px;font-style:italic}
+.pill{font-size:11.5px;font-weight:800;letter-spacing:.06em;padding:3px 10px;border-radius:99px;
+  color:var(--chip-ink);text-transform:uppercase}
+
+/* override + consent boxes */
+.obox{border-radius:var(--radius);padding:14px 16px 14px 20px;margin:0 0 14px;position:relative;overflow:hidden;
+  border:2px solid var(--coral);background:var(--coral-bg)}
+.obox::before{content:"";position:absolute;inset:0 auto 0 0;width:8px;
+  background:repeating-linear-gradient(135deg,var(--coral) 0 8px,transparent 8px 16px)}
+.obox.consent{border-color:var(--pink);background:var(--pink-bg)}
+.obox.consent::before{background:repeating-linear-gradient(135deg,var(--pink) 0 8px,transparent 8px 16px)}
+.obox .o-tag{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--coral);display:flex;align-items:center;gap:7px}
+.obox.consent .o-tag{color:var(--pink)}
+.obox h4{margin:5px 0 4px;font-size:15.5px}
+.obox p{margin:0;font-size:13.5px;color:var(--ink2);line-height:1.5}
+.obox ol{margin:8px 0 0;padding-left:20px;font-size:13.5px;color:var(--ink2)}
+.obox ol li{margin-bottom:4px}
+.obox .o-cost{margin-top:9px;font-size:12.5px;font-weight:700}
+
+/* ============ TIMELINE ============ */
+.tl-scroll{overflow-x:auto;padding-bottom:8px}
+.tl{display:flex;gap:8px;min-width:max-content;padding:6px 2px}
+.tl .day{width:118px;flex:none;border:1.5px solid var(--line);border-radius:10px;
+  background:var(--card);padding:9px 10px 11px;min-height:130px}
+.tl .day.today{border-color:var(--brass);box-shadow:0 0 0 3px color-mix(in srgb,var(--brass) 25%, transparent)}
+.tl .day.wknd{background:var(--card2);border-style:dashed}
+.tl .d-dow{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink2);font-weight:700}
+.tl .d-date{font-size:15px;font-weight:800;margin:1px 0 7px}
+.tl .ev{font-size:11px;font-weight:700;line-height:1.3;padding:4px 7px;border-radius:6px;
+  margin-bottom:5px;color:var(--chip-ink)}
+.tl .gap{width:84px;flex:none;border-radius:10px;display:grid;place-items:center;text-align:center;
+  background:repeating-linear-gradient(135deg,var(--paper2) 0 10px,transparent 10px 20px);
+  border:1.5px dashed var(--line);color:var(--ink2);
+  font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;
+  writing-mode:vertical-rl;padding:10px 0}
+.legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:12px;font-size:12.5px;color:var(--ink2)}
+.legend span{display:flex;align-items:center;gap:6px}
+.legend i{width:11px;height:11px;border-radius:3px;display:inline-block}
+
+/* ============ ASKS ============ */
+.asks li{margin-bottom:10px;line-height:1.5;font-size:14.5px}
+.asks{padding-left:22px;margin:0}
+.asks li::marker{color:var(--brass);font-weight:800}
+
+/* ============ CHAT ============ */
+.chatlog{display:flex;flex-direction:column;gap:12px;max-height:440px;overflow-y:auto;
+  padding:4px 2px;margin-bottom:12px}
+.msg{max-width:88%;padding:11px 14px;border-radius:14px;font-size:14.5px;line-height:1.55}
+.msg.user{align-self:flex-end;background:var(--violet);color:#fff;border-bottom-right-radius:4px}
+.msg.bot{align-self:flex-start;background:var(--card2);border:1px solid var(--line);border-bottom-left-radius:4px}
+.msg.bot .who{font-size:10.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--brass);margin-bottom:4px}
+.msg.bot p{margin:0 0 8px} .msg.bot p:last-child{margin-bottom:0}
+.msg.bot ul,.msg.bot ol{margin:4px 0;padding-left:20px}
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px}
+.chip{border:1.5px solid var(--line);background:var(--card2);border-radius:99px;
+  padding:5px 12px;font-size:12.5px;font-weight:600;color:var(--ink);transition:all .15s}
+.chip:hover{border-color:var(--violet);color:var(--violet)}
+.chatrow{display:flex;gap:8px}
+.chatrow input{flex:1;padding:11px 13px;border:1.5px solid var(--line);border-radius:10px;background:var(--card2)}
+.chatrow button{padding:11px 18px;border:none;border-radius:10px;background:var(--violet);
+  color:#fff;font-weight:700}
+.chatrow button:hover{filter:brightness(1.12)}
+.action-btn{display:inline-block;margin-top:8px;padding:6px 13px;border-radius:8px;border:none;
+  background:var(--brass);color:var(--chip-ink);font-weight:700;font-size:13px}
+:root[data-theme="light"] .action-btn{color:#fff}
+
+/* sections */
+section.block{margin-top:26px}
+section.block>h2{font-size:20px;font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:10px}
+section.block>h2 .bar{width:26px;height:5px;border-radius:3px;flex:none}
+section.block>.blurb{color:var(--ink2);font-size:14px;margin:0 0 14px;max-width:78ch}
+
+footer.foot{border-top:1px solid var(--line);margin-top:44px;padding:22px 0 34px;
+  font-size:12.5px;color:var(--ink2);line-height:1.6}
+footer.foot strong{color:var(--ink)}
+
+/* color utilities */
+.c-teal{background:var(--teal)} .c-amber{background:var(--amber)} .c-violet{background:var(--violet)}
+.c-green{background:var(--green)} .c-coral{background:var(--coral)} .c-pink{background:var(--pink)}
+.b-teal{border-left-color:var(--teal)} .b-amber{border-left-color:var(--amber)} .b-violet{border-left-color:var(--violet)}
+.b-green{border-left-color:var(--green)} .b-coral{border-left-color:var(--coral)} .b-pink{border-left-color:var(--pink)}
+</style>
+</head>
+<body>
+
+
+<header class="masthead">
+  <div class="wrap mast-inner">
+    <div class="seal serif" aria-hidden="true">SF</div>
+    <div class="mast-title">
+      <div class="eyebrow">119th Congress · 2nd Session · Floor Strategy Desk</div>
+      <h1 class="serif">Senate Floor Scheduler</h1>
+      <p class="mast-sub">Pick a bill, pick a target date, and get a rule-conforming path to final
+        passage — with every cloture clock, vote threshold, and leadership ask spelled out.</p>
+    </div>
+    <div class="shotclock" role="status">
+      <div class="big mono" id="clock-days">—</div>
+      <div class="lbl">Session days until<br>August recess</div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="cols">
+
+    <!-- ============ CONTROL RAIL ============ -->
+    <div class="rail">
+      <div class="panel">
+        <h2>1 · The Bill</h2>
+        <div class="field">
+          <label for="bill">Measure</label>
+          <select id="bill">
+            <option value="clarity" selected>H.R. 3633 — CLARITY Act (digital asset market structure)</option>
+            <option value="budget">Generic budget-reconciliation bill</option>
+            <option value="custom">Custom bill…</option>
+          </select>
+        </div>
+        <div class="field" id="customName-wrap" hidden>
+          <label for="customName">Bill name</label>
+          <input type="text" id="customName" placeholder="e.g., S. 1234 — Example Act">
+        </div>
+        <div class="field">
+          <label for="posture">Where the bill sits today</label>
+          <select id="posture">
+            <option value="calendar" selected>Reported — on the Calendar of Business (General Orders)</option>
+            <option value="committee">Still in committee (not yet reported)</option>
+            <option value="desk">House-passed message held at the desk</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="target">Target date for final passage</label>
+          <input type="date" id="target" value="2026-08-07" min="2026-07-28" max="2026-10-02">
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>2 · Strategy Levers</h2>
+        <label class="tog"><input type="checkbox" id="t-yield">
+          <span><span class="t-name"><span class="dot c-violet"></span>Yield back post-cloture time</span><br>
+          <span class="t-desc">Both sides agree (by consent) to give back the 30 hours after each cloture vote. Saves ~1 session day per cloture.</span></span></label>
+        <label class="tog"><input type="checkbox" id="t-uc">
+          <span><span class="t-name"><span class="dot c-pink"></span>Global unanimous-consent agreement</span><br>
+          <span class="t-desc">A hotlined UC sets the whole schedule — waives cloture clocks, limits amendments, fixes vote times. One objection kills it.</span></span></label>
+        <label class="tog"><input type="checkbox" id="t-wknd">
+          <span><span class="t-name"><span class="dot c-amber"></span>Weekend sessions</span><br>
+          <span class="t-desc">Leader keeps the Senate in Saturday–Sunday. Weekend days count as session days for cloture ripening.</span></span></label>
+        <label class="tog"><input type="checkbox" id="t-extend">
+          <span><span class="t-name"><span class="dot c-amber"></span>Delay the August recess</span><br>
+          <span class="t-desc">Leadership keeps the chamber in session into the state work period (adds Aug 10–21 as work days).</span></span></label>
+        <label class="tog"><input type="checkbox" id="t-msg">
+          <span><span class="t-name"><span class="dot c-teal"></span>House-message vehicle (“ping-pong”)</span><br>
+          <span class="t-desc">Ride an amendment-exchange message from the House — the motion to consider it is privileged, skipping one whole cloture cycle.</span></span></label>
+        <label class="tog"><input type="checkbox" id="t-recon">
+          <span><span class="t-name"><span class="dot c-green"></span>Budget reconciliation</span><br>
+          <span class="t-desc">51-vote fast track: privileged motion to proceed, 20-hour debate cap, no filibuster — but the Byrd rule limits what qualifies.</span></span></label>
+        <label class="tog"><input type="checkbox" id="t-nuke">
+          <span><span class="t-name"><span class="dot c-coral"></span>Nuclear option</span><br>
+          <span class="t-desc">Majority creates a new precedent lowering cloture on legislation to 51. Never yet done for legislation.</span></span></label>
+      </div>
+
+      <div class="panel">
+        <h2>3 · Whip Count</h2>
+        <div class="whiprow">
+          <label for="w-gop">Republican yes</label>
+          <input type="range" id="w-gop" min="0" max="53" value="51">
+          <output id="o-gop" class="mono">51</output>
+        </div>
+        <div class="whiprow">
+          <label for="w-dem">Dem-caucus yes</label>
+          <input type="range" id="w-dem" min="0" max="47" value="9">
+          <output id="o-dem" class="mono">9</output>
+        </div>
+        <div class="votebar" aria-hidden="true">
+          <div class="fill" id="votefill"></div>
+          <div class="mark" style="left:51%" data-l="51"></div>
+          <div class="mark" style="left:60%" data-l="60"></div>
+        </div>
+        <div class="votelegend"><span id="votetot" class="mono"></span><span id="voteverdict"></span></div>
+      </div>
+    </div>
+
+    <!-- ============ RESULTS ============ -->
+    <div>
+      <div id="verdict"></div>
+
+      <section class="block" style="margin-top:0">
+        <h2><span class="bar c-teal"></span>The Path, Step by Step</h2>
+        <p class="blurb">Every step below is the real procedural mechanic — the rule or precedent it rests
+          on is cited on each card. Red-striped boxes flag where you’d be overriding normal rules;
+          pink-striped boxes flag where you need every senator’s consent.</p>
+        <div class="flow" id="plan"></div>
+      </section>
+
+      <section class="block">
+        <h2><span class="bar c-amber"></span>Floor Calendar</h2>
+        <p class="blurb">Session days from today through the target window. Cloture “ripening” counts
+          <em>days of session</em>, not calendar days — which is why weekends and recess matter so much.</p>
+        <div class="tl-scroll"><div class="tl" id="timeline"></div></div>
+        <div class="legend">
+          <span><i class="c-teal"></i>Motions & floor moves</span>
+          <span><i class="c-amber"></i>Cloture votes (60)</span>
+          <span><i class="c-violet"></i>Debate / post-cloture</span>
+          <span><i class="c-green"></i>Passage votes (majority)</span>
+          <span><i class="c-coral"></i>Override plays</span>
+          <span><i class="c-pink"></i>Consent needed</span>
+        </div>
+      </section>
+
+      <section class="block">
+        <h2><span class="bar c-green"></span>Your Asks to Senate Leadership</h2>
+        <p class="blurb">What you would actually request from the Majority Leader’s office, the cloakrooms,
+          and your whip operation to make this schedule real.</p>
+        <div class="panel"><ol class="asks" id="asks"></ol></div>
+      </section>
+
+      <section class="block">
+        <h2><span class="bar c-violet"></span>Ask the Parliamentarian</h2>
+        <p class="blurb">A built-in guide to floor procedure. Ask about cloture, motions to proceed,
+          filling the tree, reconciliation, the nuclear option — or tell it a goal, like
+          “pass the CLARITY Act before the August recess.”</p>
+        <div class="panel">
+          <div class="chatlog" id="chatlog" aria-live="polite"></div>
+          <div class="chips" id="chips"></div>
+          <div class="chatrow">
+            <input type="text" id="chatin" placeholder="Ask about a rule, or set a goal…"
+              aria-label="Ask the parliamentarian">
+            <button id="chatsend">Ask</button>
+          </div>
+        </div>
+      </section>
+
+      <footer class="foot">
+        <strong>Grounding & caveats.</strong> Procedure per Senate Rule XXII (cloture), Rule XIV (bypassing
+        committee), the Congressional Budget Act (reconciliation), and CRS reports on floor practice
+        (R44819, RL30360, 98-425). Bill status as of July 28, 2026: H.R. 3633 passed the House
+        294–134 (Jul 17, 2025) and was reported by Senate Banking 15–9 (May 14, 2026); it awaits floor time,
+        with the Senate scheduled in session through Fri Aug 7, returning Sep 14. Session-day calendar is the
+        published 2026 schedule and may shift. This is a planning model, not legal advice — the presiding
+        officer, the Parliamentarian, and 100 senators get a say the model doesn’t.
+      </footer>
+    </div>
+  </div>
+</main>
+
+<script>
+/* ================================================================
+   SENATE FLOOR RULES ENGINE
+   ================================================================ */
+
+// ---------- Session-day calendar (2026, published schedule) ----------
+function buildSessionDays(o){
+  const days=[]; const push=(y,m,d)=>days.push(new Date(Date.UTC(y,m-1,d)));
+  const range=(y,m,d1,d2,weekdaysOnly)=>{for(let d=d1;d<=d2;d++){const dt=new Date(Date.UTC(y,m-1,d));
+    const dow=dt.getUTCDay(); if(weekdaysOnly&&(dow===0||dow===6))continue; days.push(dt);}};
+  const wk=!o.weekends;
+  range(2026,7,27,31,wk);            // week of Jul 27
+  range(2026,8,3,7,wk);              // last scheduled week before recess
+  if(o.weekends){range(2026,8,1,2,false); range(2026,8,8,9,false);}
+  if(o.extend){range(2026,8,10,14,wk); range(2026,8,17,21,wk);}   // recess delayed
+  range(2026,9,14,30,wk); range(2026,10,1,2,wk);                  // September return
+  days.sort((a,b)=>a-b);
+  return days.filter((d,i)=>i===0||+d!==+days[i-1]);
+}
+const RECESS_START=new Date(Date.UTC(2026,7,8)), RETURN=new Date(Date.UTC(2026,8,14));
+const fmt=d=>d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',timeZone:'UTC'});
+const DOW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+function today(){
+  const now=new Date(); const t=new Date(Date.UTC(now.getFullYear(),now.getMonth(),now.getDate()));
+  const lo=new Date(Date.UTC(2026,6,28)), hi=new Date(Date.UTC(2026,9,2));
+  return t<lo?lo:(t>hi?lo:t);
+}
+
+// ---------- Bill presets ----------
+const BILLS={
+  clarity:{name:'H.R. 3633 — the CLARITY Act', short:'the CLARITY Act', posture:'calendar',
+    substitute:true, byrdOK:false, gop:51, dem:9,
+    note:'House-passed Jul 17, 2025 (294–134); reported by Senate Banking May 14, 2026 (15–9) with a substitute — so Senate passage sends it BACK to the House for a final concurrence vote before it can reach the President.'},
+  budget:{name:'a budget-reconciliation bill', short:'the reconciliation bill', posture:'calendar',
+    substitute:false, byrdOK:true, gop:50, dem:0, note:''},
+  custom:{name:'your bill', short:'your bill', posture:'calendar',
+    substitute:false, byrdOK:false, gop:51, dem:9, note:''}
+};
+
+// ---------- The engine ----------
+function computePlan(cfg){
+  const S=buildSessionDays(cfg);
+  const t0=today();
+  let i=S.findIndex(d=>+d>=+t0); if(i<0)i=0;
+  const steps=[], boxes=[], asks=[];
+  const bill=cfg.bill;
+  const clotureVotes=cfg.gop+cfg.dem;
+  const clotureNeed=cfg.nuke?51:60;
+  const day=k=>S[Math.min(k,S.length-1)];
+  const dstr=k=>fmt(day(k));
+  let blocked=false;
+
+  const add=(color,icon,title,body,cite,thresh,di,tlLabel)=>{
+    steps.push({color,icon,title,body,cite,thresh,date:day(di),di,tlLabel});};
+
+  // ----- Nuclear option box (if armed) -----
+  if(cfg.nuke){
+    boxes.push({at:0,kind:'override',title:'The nuclear option: rewriting Rule XXII by precedent',
+      body:'A simple majority can effectively lower the 60-vote cloture threshold for legislation to 51 — not by amending the rules (that takes 67), but by creating a new precedent:',
+      list:['A senator raises a point of order that cloture on legislation is invoked by a simple majority.',
+        'The presiding officer, following the Parliamentarian, rules the point of order NOT well taken under current precedent.',
+        'The majority appeals the ruling of the chair — the appeal is tabled or decided without debate.',
+        '51 senators vote to reverse the chair, and the new 51-vote precedent is set — permanently, for both parties.'],
+      cost:'Cost: the legislative filibuster is gone for everything, forever. Done for nominations in 2013 and 2017; never for legislation. Expect this to be the hardest ask in Washington.'});
+    asks.push('Ask the Majority Leader to schedule the precedent-setting vote (the “nuclear option”) and confirm 51 senators will sustain the ruling — including members who have publicly pledged to preserve the legislative filibuster.');
+  }
+
+  // ----- Reconciliation path -----
+  if(cfg.recon){
+    if(!bill.byrdOK){
+      boxes.push({at:0,kind:'override',title:'Reconciliation is (almost certainly) unavailable for this bill',
+        body:bill.short.charAt(0).toUpperCase()+bill.short.slice(1)+' is regulatory policy. Under the Byrd rule (2 U.S.C. §644), any provision whose budgetary effect is “merely incidental” to its policy aim is struck on a 60-vote point of order — which would gut a market-structure bill. To even try, you would need:',
+        list:['A FY2027 budget resolution adopted by both chambers containing reconciliation instructions that cover this policy area.',
+          'A Parliamentarian ruling (the “Byrd bath”) that the operative text has real budgetary effects — very unlikely for regulatory jurisdiction language.',
+          'Or 60 votes to waive the Byrd rule — which defeats the purpose of using reconciliation.'],
+        cost:'Verdict: not a real path for this measure. Shown so you can see why leadership will say no.'});
+    } else {
+      add('green','◆','Adopt the budget resolution with reconciliation instructions',
+        'Both chambers adopt a concurrent budget resolution instructing committees to report the measure. The resolution itself is filibuster-proof (50 hours of debate, majority vote).',
+        'Congressional Budget Act §§301–310',{n:51,label:'51 votes'},i,'Budget resolution'); i+=2;
+      add('teal','▸','Privileged motion to proceed — no cloture needed',
+        'The motion to proceed to a reconciliation bill is privileged and non-debatable. No 60-vote gate exists anywhere on this path.',
+        'Budget Act §310(e)',{n:51,label:'51 votes'},i,'MTP (privileged)');
+      add('violet','◈','20 hours of debate, then vote-a-rama',
+        'Statutory 20-hour debate cap, equally divided. When time expires, amendments can still be offered without debate — the all-night “vote-a-rama.” The Byrd bath with the Parliamentarian happens before floor action.',
+        'Budget Act §310(e)(2)',null,i+1,'Vote-a-rama');
+      add('green','★','Final passage',
+        'Simple majority; the Vice President can break a 50–50 tie.', 'Art. I §3',{n:51,label:'51 votes'},i+2,'FINAL PASSAGE');
+      asks.push('Ask Budget Committee leadership for reconciliation instructions covering this measure in the FY2027 budget resolution.');
+      asks.push('Ask the Parliamentarian’s office for an early Byrd-rule scrub of the bill text.');
+      return {steps,boxes,asks,S,finalDi:i+2,blocked:false,clotureNeed,clotureVotes};
+    }
+  }
+
+  // ----- Whip check -----
+  if(clotureVotes<clotureNeed && !cfg.uc){
+    blocked=true;
+    boxes.push({at:0,kind:'override',title:`You are ${clotureNeed-clotureVotes} vote${clotureNeed-clotureVotes===1?'':'s'} short of cloture`,
+      body:`Your whip count shows ${clotureVotes} (${cfg.gop} R + ${cfg.dem} D-caucus). Every cloture gate on this path needs ${clotureNeed}. Until the math works, the schedule below is theoretical. Ways to close the gap:`,
+      list:['Win more votes — for the CLARITY Act that means Democratic asks on consumer protection, ethics/conflict-of-interest, and AML provisions (the Alsobrooks conditions).',
+        'Negotiate a global UC agreement instead (no cloture votes at all — but any one senator can object).',
+        'The nuclear option (51-vote cloture) — see the strategy lever, and its price.'],
+      cost:'Recommendation: the whip count IS the schedule. Fix this first.'});
+  }
+
+  // ----- Getting to the calendar -----
+  if(cfg.posture==='committee'){
+    add('teal','▸','Bypass committee — Rule XIV to the calendar',
+      'Have the bill read twice on separate legislative days; after the second reading, an objection to further proceeding places it directly on the Calendar of Business, skipping committee referral entirely. (Alternative: the committee reports it, or a discharge resolution — far slower.)',
+      'Senate Rule XIV, paras. 2–4',null,i,'Rule XIV placement');
+    asks.push('Ask the Leader to run the Rule XIV play: two readings on consecutive legislative days, with a scripted objection to place the bill straight on the calendar.');
+    i+=2;
+  }
+
+  // ----- Proceeding to the bill -----
+  if(cfg.uc){
+    boxes.push({at:steps.length,kind:'consent',title:'Everything below happens only if NO senator objects',
+      body:'A global unanimous-consent agreement replaces every cloture clock: it makes the bill the pending business, sets a finite amendment list, caps debate, and locks vote times. The cloakrooms “hotline” it to all 100 offices — a single objection (or an anonymous hold) kills it and you fall back to the cloture path.',
+      list:null,cost:'Watch for: Sens. Paul and Hawley have both signaled objections to this bill — a UC likely gets blocked unless their price is paid.'});
+    add('pink','✓','UC agreement locks the schedule',
+      'The Leader propounds the consent agreement on the floor. From here the timeline is whatever the agreement says — model assumes proceed same day, one day of managed amendments, passage the next.',
+      'Standing practice; Riddick’s “Unanimous Consent Agreements”',{n:100,label:'No objection'},i,'UC locks schedule');
+    add('teal','▸','Senate proceeds to the bill by consent',
+      'No motion to proceed, no cloture — the bill simply becomes the pending business at the agreed time.',
+      null,null,i,'Proceed by consent');
+    const amendDay=i+1;
+    add('violet','◈','Managed amendment votes',
+      'Only the amendments listed in the agreement are in order, each with a time limit — often at a 60-vote threshold by consent to mirror cloture.',
+      null,null,amendDay,'Managed amendments');
+    add('green','★','Final passage at the agreed time',
+      'Simple majority; the VP can break a tie.'+(bill.substitute?' Because the Senate text differs from the House’s, the bill returns to the House for concurrence.':''),
+      null,{n:51,label:'51 votes'},amendDay+1,'FINAL PASSAGE');
+    asks.push('Ask both cloakrooms to hotline the consent agreement early in the week and report back every objection so you can negotiate them down one by one.');
+    asks.push('Prepare a fallback cloture schedule in case the UC is blocked — file the same day the objection lands.');
+    return {steps,boxes,asks,S,finalDi:amendDay+1,blocked:false,clotureNeed,clotureVotes};
+  }
+
+  const yieldBack=cfg.yield;
+  if(cfg.posture==='desk' || cfg.msg){
+    add('teal','▸','Take up the House message — privileged motion',
+      'The Leader moves to consider the House amendment (a message between the houses). That motion is privileged and NOT debatable — the entire first cloture cycle (proceeding to the bill) disappears. This is the classic end-game shortcut (used for the ACA, fiscal-cliff deals, and most December omnibuses).',
+      'Rule XXII precedents; CRS R44819',{n:51,label:'51 votes'},i,'Privileged MTP');
+    asks.push('Ask House leadership to send (or re-send) the vehicle as an amendment between the houses so the Senate motion to proceed is privileged.');
+  } else {
+    add('teal','▸','Leader calls up the bill: motion to proceed + cloture filed',
+      'Using the right of first recognition, the Majority Leader moves to proceed to the bill (which is on the Calendar of Business). The MTP is debatable — i.e., filibuster-able — so the Leader files a cloture petition signed by 16 senators on the motion the same day.',
+      'Rule VIII; Rule XXII para. 2; precedent on priority of recognition (1937)',null,i,'MTP + cloture filed');
+    add('amber','⏱','Cloture ripens: vote to end debate on the MTP',
+      'The petition “ripens” one hour after the Senate convenes on the second day of session after filing. Three-fifths of all senators sworn — 60 — must vote yes.',
+      'Rule XXII para. 2',{n:clotureNeed,label:clotureNeed+' votes'},i+2,'CLOTURE on MTP');
+    if(cfg.nuke) steps[steps.length-1].body+=' (Your nuclear-option play lowers this gate to 51 by precedent.)';
+    if(yieldBack){
+      add('violet','◈','Post-cloture time yielded back; MTP adopted',
+        'Up to 30 hours of post-cloture consideration are available, but by consent both sides yield the time back and adopt the motion by voice or majority vote the same day.',
+        'Rule XXII para. 2',{n:51,label:'51 votes'},i+2,'MTP adopted');
+    } else {
+      add('violet','◈','30 hours of post-cloture debate on the MTP',
+        'Opponents can insist on the full 30 hours of consideration, burning roughly a session day. Then the MTP is adopted by simple majority.',
+        'Rule XXII para. 2',{n:51,label:'51 votes'},i+3,'MTP adopted');
+    }
+    i=yieldBack?i+2:i+3;
+  }
+
+  // ----- On the bill -----
+  const fillDay=i;
+  add('teal','▸','Bill is pending: Leader fills the amendment tree, files cloture',
+    'The moment the bill is the pending business, the Leader uses first recognition to offer amendments occupying every slot on the “tree,” blocking unwanted amendments, then immediately files cloture on the substitute (and often the underlying bill in sequence).',
+    'Precedents on amendment trees; Rule XXII',null,fillDay,'Tree filled + cloture filed');
+  add('amber','⏱','Cloture on the bill (the substitute)',
+    'Ripens on the second session day after filing, one hour after convening. 60 votes (three-fifths sworn). After cloture, all amendments must be germane and pre-filed — first-degree by 1 p.m. the day after filing, second-degree until one hour before the vote.',
+    'Rule XXII paras. 2–3',{n:clotureNeed,label:clotureNeed+' votes'},fillDay+2,'CLOTURE on bill');
+  let finalDi;
+  if(yieldBack){
+    add('green','★','Post-cloture time yielded back → FINAL PASSAGE',
+      'Time is yielded back by consent; the Senate disposes of pending germane amendments and votes on final passage. Simple majority; the VP breaks a tie.'+(bill.substitute?' The amended bill then returns to the House, which must pass the Senate text before it can go to the President.':''),
+      'Rule XXII; Art. I §7',{n:51,label:'51 votes'},fillDay+2,'FINAL PASSAGE');
+    finalDi=fillDay+2;
+  } else {
+    add('violet','◈','30 hours post-cloture on the bill',
+      'The clock runs; germane pending amendments may still get votes. No senator may speak more than one hour total.',
+      'Rule XXII para. 2',null,fillDay+3,'Post-cloture (30 hrs)');
+    add('green','★','FINAL PASSAGE',
+      'Simple majority of those voting; the VP breaks a tie.'+(bill.substitute?' The amended bill then returns to the House, which must pass the Senate text before it goes to the President — budget House floor time the same week or this slips to September.':''),
+      'Art. I §7',{n:51,label:'51 votes'},fillDay+3,'FINAL PASSAGE');
+    finalDi=fillDay+3;
+  }
+
+  // standing asks
+  asks.push('Ask the Majority Leader to make the bill the pending business at the top of the week and file cloture on the motion to proceed the same afternoon — every day of delay pushes final passage a full day.');
+  asks.push('Ask the Leader’s floor staff to pre-negotiate yielding back post-cloture time with the minority — it is worth up to two full session days across the two cloture cycles.');
+  if(bill===BILLS.clarity){
+    asks.push('Whip the Democratic gettables (Gallego and Alsobrooks are on record “yes with conditions”) — you need roughly nine Dem-caucus votes assuming Paul and Hawley stay no. The asks: consumer protection, elected-official ethics/conflict-of-interest, and AML language.');
+    asks.push('Coordinate with House leadership NOW on same-week concurrence with the Senate substitute — Senate passage alone does not make law, and the House leaves for recess too.');
+  }
+  if(cfg.wknd) asks.push('Ask the Leader to announce weekend sessions in advance — Saturday and Sunday count as session days for ripening cloture, buying back the calendar.');
+  if(cfg.extend) asks.push('Ask leadership to formally delay the state work period — politically expensive in a midterm year, so pair it with a public message about why the bill can’t wait for September.');
+
+  return {steps,boxes,asks,S,finalDi,blocked,clotureNeed,clotureVotes};
+}
+
+/* ================================================================
+   RENDERING
+   ================================================================ */
+const $=id=>document.getElementById(id);
+const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+
+function currentCfg(){
+  const key=$('bill').value; const bill=BILLS[key];
+  if(key==='custom'&&$('customName').value.trim()) bill.name=bill.short=esc($('customName').value.trim());
+  return {bill, key, posture:$('posture').value,
+    yield:$('t-yield').checked, uc:$('t-uc').checked, wknd:$('t-wknd').checked,
+    weekends:$('t-wknd').checked, extend:$('t-extend').checked, msg:$('t-msg').checked,
+    recon:$('t-recon').checked, nuke:$('t-nuke').checked,
+    gop:+$('w-gop').value, dem:+$('w-dem').value,
+    target:new Date($('target').value+'T00:00:00Z')};
+}
+
+function render(){
+  const cfg=currentCfg();
+  const R=computePlan(cfg);
+  const finalDate=R.steps.length?R.steps[R.steps.length-1].date:null;
+
+  // shot clock
+  const t=today();
+  const preRecess=buildSessionDays({}).filter(d=>+d>=+t&&+d<+RECESS_START).length;
+  $('clock-days').textContent=preRecess;
+
+  // whip bar
+  const tot=cfg.gop+cfg.dem;
+  $('o-gop').textContent=cfg.gop; $('o-dem').textContent=cfg.dem;
+  $('votetot').textContent=tot+' / 100 expected yes';
+  const fill=$('votefill'); fill.style.width=tot+'%';
+  fill.style.background=tot>=60?'var(--green)':(tot>=51?'var(--amber)':'var(--coral)');
+  $('voteverdict').textContent=tot>=R.clotureNeed?'Clears cloture ('+R.clotureNeed+')':
+    (tot>=51?'Passes, but cloture fails':'Fails everything');
+
+  // verdict banner
+  const madeIt=finalDate&&+finalDate<=+cfg.target&&!R.blocked;
+  const missBy=finalDate?R.S.filter(d=>+d>+cfg.target&&+d<=+finalDate).length:0;
+  let cls,head,body;
+  if(R.blocked){cls='fail';head='⛔ Blocked on the math, not the calendar';
+    body=`The dates below work, but cloture needs ${R.clotureNeed} and you’re whipping ${R.clotureVotes}. See the red box in the path for ways to close the gap.`;}
+  else if(madeIt){cls='ok';head='✅ It fits: final passage '+fmt(finalDate);
+    const spare=R.S.filter(d=>+d>+finalDate&&+d<=+cfg.target).length;
+    body=`${cfg.bill.name.charAt(0).toUpperCase()+cfg.bill.name.slice(1)} can clear the Senate by your ${fmt(cfg.target)} target under the levers selected — with ${spare} session day${spare===1?'':'s'} of cushion. ${cfg.bill.note}`;}
+  else{cls='warn';head='⚠️ Misses the target by '+missBy+' session day'+(missBy===1?'':'s')+
+    (finalDate?' (lands '+fmt(finalDate)+')':'');
+    body='The rules-conforming schedule overshoots your date. Cheapest fixes, in order: yield back post-cloture time (saves ~2 days), weekend sessions, a global UC, or — the big ask — delaying the recess.';}
+  $('verdict').innerHTML=`<div class="verdict ${cls}"><div class="v-head">${head}</div><div class="v-body">${body}</div></div>`;
+
+  // steps + boxes
+  const flow=$('plan'); flow.innerHTML='';
+  const boxAt=k=>R.boxes.filter(b=>b.at===k).map(renderBox).join('');
+  let html=boxAt(0);
+  R.steps.forEach((s,ix)=>{
+    html+=boxAt(ix)&&ix>0?boxAt(ix):'';
+    html+=`<div class="step">
+      <div class="spine"><div class="node c-${s.color}">${ix+1}</div><div class="cord c-${s.color}"></div></div>
+      <div class="stepcard b-${s.color}">
+        <div class="s-top">
+          <span class="s-date mono">${fmt(s.date)}</span>
+          <h3>${s.title}</h3>
+          ${s.thresh?`<span class="pill c-${s.color}">${s.thresh.label}</span>`:''}
+        </div>
+        <p class="s-body">${s.body}</p>
+        ${s.cite?`<p class="s-cite">— ${s.cite}</p>`:''}
+      </div></div>`;
+  });
+  flow.innerHTML=html;
+
+  renderTimeline(R,cfg);
+  $('asks').innerHTML=R.asks.map(a=>`<li>${a}</li>`).join('');
+}
+
+function renderBox(b){
+  return `<div class="obox ${b.kind==='consent'?'consent':''}">
+    <div class="o-tag">${b.kind==='consent'?'⚑ Unanimous consent required':'⚡ Rule override — how it would actually happen'}</div>
+    <h4>${b.title}</h4><p>${b.body}</p>
+    ${b.list?'<ol>'+b.list.map(x=>`<li>${x}</li>`).join('')+'</ol>':''}
+    ${b.cost?`<p class="o-cost">${b.cost}</p>`:''}</div>`;
+}
+
+function renderTimeline(R,cfg){
+  const tl=$('timeline'); tl.innerHTML='';
+  const t=today();
+  const events={};
+  R.steps.forEach(s=>{const k=+s.date;(events[k]=events[k]||[]).push(s);});
+  const lastShown=R.steps.length?new Date(Math.max(+R.steps[R.steps.length-1].date,+cfg.target)):cfg.target;
+  let gapShown=false, out='';
+  for(const d of R.S){
+    if(+d< +t) continue;
+    if(+d>+lastShown && +d>=+RETURN) break;
+    if(+d>=+RETURN && !gapShown && !cfg.extend){
+      out+=`<div class="gap">State work period · Aug 8 – Sep 13</div>`; gapShown=true;
+    }
+    if(+d>+lastShown) break;
+    const dow=DOW[d.getUTCDay()];
+    const isWknd=d.getUTCDay()===0||d.getUTCDay()===6;
+    const isToday=+d===+t;
+    const evs=(events[+d]||[]).map(s=>`<div class="ev c-${s.color}">${s.tlLabel}</div>`).join('');
+    const tgt=+d===+cfg.target?`<div class="ev" style="background:var(--brass);color:var(--chip-ink)">🎯 TARGET</div>`:'';
+    out+=`<div class="day ${isToday?'today':''} ${isWknd?'wknd':''}">
+      <div class="d-dow">${dow}${isToday?' · today':''}</div>
+      <div class="d-date mono">${d.toLocaleDateString('en-US',{month:'short',day:'numeric',timeZone:'UTC'})}</div>
+      ${evs}${tgt}</div>`;
+  }
+  tl.innerHTML=out;
+}
+
+/* ================================================================
+   ASK THE PARLIAMENTARIAN (deterministic assistant)
+   ================================================================ */
+const KB=[
+ {k:['cloture','60 vote','rule xxii','rule 22','end debate','filibuster proof'],
+  a:`<p><strong>Cloture (Rule XXII)</strong> is the Senate’s only way to force an end to debate over objection. The mechanics:</p><ul><li><strong>File:</strong> a petition signed by 16 senators, on whatever question is pending (a motion to proceed, an amendment, the bill).</li><li><strong>Ripen:</strong> it sits until <em>one hour after the Senate convenes on the second day of session</em> after filing (file Monday → vote Wednesday).</li><li><strong>Vote:</strong> three-fifths of all senators duly chosen and sworn — <strong>60</strong> — for legislation; two-thirds present and voting for rules changes.</li><li><strong>After:</strong> a hard cap of <strong>30 more hours</strong> of consideration; amendments must be germane and pre-filed.</li></ul><p>A determined majority typically needs <em>two</em> cloture cycles per bill: one on the motion to proceed, one on the bill itself.</p>`},
+ {k:['motion to proceed','mtp','take up','pending business','call up'],
+  a:`<p>The <strong>motion to proceed</strong> is how a bill on the calendar becomes the Senate’s pending business. Only the Majority Leader (by the precedent of first recognition) realistically makes it. The catch: the MTP is itself <strong>debatable</strong> — it can be filibustered — so leaders usually file cloture on it immediately. Exceptions where the MTP is privileged (non-debatable): budget resolutions, reconciliation bills, conference reports, and House messages — which is exactly why the “ping-pong” shortcut is so valuable.</p>`},
+ {k:['fill the tree','amendment tree','filling the tree','block amendment'],
+  a:`<p><strong>Filling the amendment tree:</strong> the pending bill can only have a fixed number of amendments pending at once (the “tree”). Because the Majority Leader gets recognized first, they can offer placeholder amendments occupying <em>every</em> slot — blocking all other senators from getting amendment votes. It protects vulnerable members from tough votes and forces the minority to either accept the deal or vote down cloture. Standard practice on contested bills since the mid-2000s.</p>`},
+ {k:['post-cloture','30 hour','thirty hour','after cloture','germane'],
+  a:`<p>After cloture is invoked, consideration is capped at <strong>30 hours</strong>. During that window: no senator may speak more than one hour total; all amendments must be <strong>germane</strong> and must have been filed on time (first-degree by 1 p.m. the day after the petition was filed; second-degree up to an hour before the vote); and non-germane motions are dead. The 30 hours can be — and in cooperative moods usually is — <strong>yielded back by consent</strong>, which is why one of the biggest scheduling asks is simply “will the minority give back the time?”</p>`},
+ {k:['unanimous consent','uc agreement','hotline','hold','object'],
+  a:`<p><strong>Unanimous consent runs the Senate.</strong> Nearly every rule — cloture clocks, amendment rights, vote timing — can be waived if no senator objects. Leaders negotiate a UC agreement, then the cloakrooms <strong>“hotline”</strong> it: an alert to all 100 offices saying “we intend to lock this in — object by X o’clock or it’s agreed.” A senator who objects (even anonymously, via a <strong>hold</strong>) blocks it, and you fall back to the slow cloture path. That’s why a single senator can cost the majority a week, and why floor time is the most valuable currency in the building.</p>`},
+ {k:['rule xiv','rule 14','bypass committee','skip committee','place on calendar'],
+  a:`<p><strong>Rule XIV</strong> lets leadership bypass committee entirely: a bill is read twice on separate legislative days, and if a senator objects to further proceeding after the second reading, the bill goes <strong>straight onto the Calendar of Business</strong> instead of to committee. The objection is usually scripted by the leader’s own staff. It doesn’t guarantee floor time — it just parks the bill where the Leader can move to proceed to it whenever the moment is right. (H.R. 3633 doesn’t need it: it was reported by Senate Banking on May 14, 2026, so it’s already on the calendar.)</p>`},
+ {k:['reconciliation','byrd','vote-a-rama','budget act','51 vote'],
+  a:`<p><strong>Reconciliation</strong> is the 51-vote fast track: privileged (unfilibusterable) motion to proceed, a 20-hour debate cap, then <strong>vote-a-rama</strong>, and final passage by simple majority. The gate is the <strong>Byrd rule</strong>: every provision must have a real budgetary effect that isn’t “merely incidental” to policy aims, or it’s struck on a point of order that takes 60 votes to waive. That’s why tax and spending bills ride reconciliation but regulatory bills — like a crypto market-structure bill — realistically can’t. It also requires a budget resolution with instructions first.</p>`},
+ {k:['nuclear option','nuclear','change the rules','precedent','51 cloture'],
+  a:`<p><strong>The nuclear option</strong> changes the Senate’s effective rules by majority vote — not by amending Rule XXII (that needs two-thirds) but by creating a new <em>precedent</em>: a point of order that cloture needs only 51, the chair rules against it per current precedent, the majority appeals, and 51 votes reverse the chair. Done in <strong>2013</strong> (most nominations) and <strong>2017</strong> (Supreme Court). Never done for legislation — both parties have so far treated the legislative filibuster as mutually assured destruction. Model it with the strategy lever, but price it honestly: it’s a constitutional-moment ask, not a scheduling trick.</p>`},
+ {k:['ping-pong','house message','amendment between','messages between','shell bill','vehicle'],
+  a:`<p><strong>The House-message shortcut (“ping-pong”):</strong> when the House sends over an amendment to a Senate-passed vehicle (or vice versa), the motion to consider that message is <strong>privileged — no debatable motion to proceed, so one entire cloture cycle vanishes</strong>. Leaders park shell vehicles for exactly this reason; it’s how the ACA, fiscal-cliff deal, and most year-end omnibuses moved. You still may need cloture on the message itself, but you’ve cut days off the clock.</p>`},
+ {k:['ripen','second day','intervening day','when is the cloture vote','file friday','file monday'],
+  a:`<p>A cloture petition <strong>ripens one hour after the Senate convenes on the second day of session after filing</strong>. File Monday → intervening day Tuesday → vote Wednesday. Note it counts <em>days of session</em>, not calendar days: file Thursday and take Friday off, and the vote slides to the middle of next week. This is why weekend sessions are a real scheduling lever — Saturday counts if the Senate gavels in.</p>`},
+ {k:['recess','august','state work period','september','deadline','window'],
+  a:`<p>The 2026 calendar has the Senate in session through <strong>Friday, August 7</strong>, then out for the state work period until <strong>September 14</strong> (with October mostly gone to the midterms). That makes the first week of August the last realistic gate for anything contentious this summer. Leadership <em>can</em> delay the recess — leaders have threatened or done it in crunch years — but in a midterm year it’s among the most expensive asks you can make.</p>`},
+ {k:['clarity','3633','crypto','market structure','digital asset'],
+  a:`<p><strong>Where the CLARITY Act stands (as of Jul 28, 2026):</strong> H.R. 3633 passed the House 294–134 on Jul 17, 2025. Senate Banking reported a rewritten version 15–9 on May 14, 2026 (Gallego and Alsobrooks crossing over, with conditions). It’s on the Senate calendar awaiting floor time. The whip math: 53 R minus expected no’s from Paul and Hawley = 51, so you need roughly <strong>9 Democratic votes</strong> for cloture. And because the Senate text differs from the House’s, Senate passage sends it <em>back to the House</em> for concurrence before it can go to the President.</p>`,
+  act:{label:'Load: pass CLARITY before recess',run:'clarityPreset'}},
+ {k:['pass the clarity','before the recess','before august','pass clarity','make it work','fastest'],
+  a:`<p>Here’s the play, and it fits — barely:</p><ol><li><strong>Tue Jul 28:</strong> Leader moves to proceed to H.R. 3633, files cloture on the MTP.</li><li><strong>Thu Jul 30:</strong> cloture ripens — 60-vote gate #1.</li><li><strong>Fri Jul 31:</strong> MTP adopted; Leader fills the tree and files cloture on the substitute.</li><li><strong>Tue Aug 4:</strong> 60-vote gate #2.</li><li><strong>Wed Aug 5:</strong> final passage — two session days before the recess.</li></ol><p>Every day of slippage costs a day at the back end, and yielding back post-cloture time is your only real cushion. I’ve loaded this scenario into the scheduler above.</p>`,
+  act:{label:'It’s loaded — scroll up to see it',run:'clarityPreset'}},
+ {k:['who schedules','majority leader','floor time','first recognition','thune'],
+  a:`<p><strong>The Majority Leader owns the floor.</strong> By a precedent dating to 1937, the Leader is recognized first whenever seeking recognition — which in practice means only the Leader decides what the Senate takes up, when cloture gets filed, and whether weekends or recesses survive. There’s no House-style Rules Committee; the schedule is one person’s call, negotiated against 99 potential objectors. That’s why every ask in this tool ultimately routes through the Leader’s office and the two cloakrooms.</p>`},
+ {k:['hold','anonymous'],
+  a:`<p>A <strong>hold</strong> is a senator telling their leader they’ll object to a UC request on a measure — effectively a threatened filibuster. Holds aren’t in the rules; they’re enforced by the leader’s unwillingness to burn a week of floor time calling the bluff. They can be anonymous in practice, secret, stacked, or traded. Clearing holds is exactly what the “hotline” process is for.</p>`},
+ {k:['conference','concurrence','goes back to the house','house vote','president','sign'],
+  a:`<p>Senate passage isn’t the finish line. If the Senate passed the House bill <em>unchanged</em>, it goes to the President. If the Senate amended it (as with the Banking Committee’s CLARITY substitute), it returns to the House, which must either <strong>concur</strong> in the Senate text, amend it again (more ping-pong), or go to a formal <strong>conference committee</strong> (rare now — convening conference takes three more debatable motions in the Senate). For an August deadline: House concurrence has to be scheduled the same week, or the bill waits for September.</p>`},
+ {k:['help','what can','how do i','what is this'],
+  a:`<p>I can explain any floor mechanic (try “cloture,” “filling the tree,” “ping-pong,” “nuclear option,” “reconciliation,” “holds”), report bill status (“where does CLARITY stand?”), or run a scenario (“pass the CLARITY Act before the August recess”). The scheduler above updates live as you flip the strategy levers — red-striped boxes show rule overrides, pink-striped boxes show where you need consent.</p>`}
+];
+
+function clarityPreset(){
+  $('bill').value='clarity';$('posture').value='calendar';$('target').value='2026-08-07';
+  ['t-yield','t-uc','t-wknd','t-extend','t-msg','t-recon','t-nuke'].forEach(id=>$(id).checked=false);
+  $('w-gop').value=51;$('w-dem').value=9;render();
+  document.querySelector('.masthead').scrollIntoView({behavior:'smooth'});
+}
+const ACTIONS={clarityPreset};
+
+function botReply(q){
+  const s=q.toLowerCase();
+  let best=null,score=0;
+  for(const e of KB){let sc=0;for(const k of e.k){if(s.includes(k))sc+=k.length;}
+    if(sc>score){score=sc;best=e;}}
+  if(!best) return {a:`<p>I don’t have a canned answer for that one. Try asking about <strong>cloture</strong>, the <strong>motion to proceed</strong>, <strong>filling the tree</strong>, <strong>reconciliation</strong>, the <strong>nuclear option</strong>, <strong>holds</strong>, <strong>ping-pong</strong>, or say <strong>“pass the CLARITY Act before the recess.”</strong></p>`};
+  return best;
+}
+function addMsg(html,who){
+  const log=$('chatlog');const div=document.createElement('div');
+  div.className='msg '+who;
+  div.innerHTML=who==='bot'?`<div class="who">Parliamentarian’s desk</div>${html}`:esc(html);
+  log.appendChild(div);log.scrollTop=log.scrollHeight;return div;
+}
+function ask(q){
+  if(!q.trim())return;
+  addMsg(q,'user');$('chatin').value='';
+  const e=botReply(q);
+  const div=addMsg(e.a,'bot');
+  if(e.act){const b=document.createElement('button');b.className='action-btn';b.textContent=e.act.label;
+    b.addEventListener('click',()=>ACTIONS[e.act.run]());div.appendChild(b);}
+}
+
+/* ================================================================
+   WIRE-UP
+   ================================================================ */
+['bill','posture','target','t-yield','t-uc','t-wknd','t-extend','t-msg','t-recon','t-nuke','w-gop','w-dem']
+  .forEach(id=>$(id).addEventListener('input',()=>{
+    if(id==='bill'){
+      $('customName-wrap').hidden=$('bill').value!=='custom';
+      const b=BILLS[$('bill').value];$('w-gop').value=b.gop;$('w-dem').value=b.dem;
+      if($('bill').value==='budget')$('t-recon').checked=true;
+    }
+    render();
+  }));
+$('customName').addEventListener('input',render);
+$('chatsend').addEventListener('click',()=>ask($('chatin').value));
+$('chatin').addEventListener('keydown',e=>{if(e.key==='Enter')ask($('chatin').value)});
+[['What is cloture?','What is cloture?'],
+ ['Pass CLARITY before recess','Pass the CLARITY Act before the August recess'],
+ ['What’s “filling the tree”?','What is filling the amendment tree?'],
+ ['Why not reconciliation?','Why can’t we use reconciliation for the CLARITY Act?'],
+ ['The nuclear option','How does the nuclear option work?'],
+ ['What happens after Senate passage?','What happens after the Senate passes the bill — does it go to the President?']]
+ .forEach(([label,q])=>{const b=document.createElement('button');b.className='chip';b.textContent=label;
+   b.addEventListener('click',()=>ask(q));$('chips').appendChild(b);});
+
+addMsg(`<p>Welcome to the floor. I model Senate procedure under the standing rules — Rule XXII cloture clocks, motions to proceed, reconciliation, all of it. The scheduler above is live: it currently shows the regular-order path for <strong>H.R. 3633, the CLARITY Act</strong>, against an <strong>Aug 7</strong> target. Ask me anything, or tap a chip below.</p>`,'bot');
+render();
+</script>
+
+</body>
+</html>
