@@ -882,10 +882,37 @@ async function downloadMemo(){
     try{await dl.save({filename:name,data:md});return;}
     catch(e){if(e&&(e.code==='declined'||e.code==='rate_limited'))return;/* else fall through */}
   }
+  if(window.claude){memoDialog(md);return;}   // artifact without the downloads grant: sandbox blocks file saves
   const url=URL.createObjectURL(new Blob([md],{type:'text/markdown'}));
   const a=document.createElement('a');a.href=url;a.download=name;
   document.body.appendChild(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),4000);
+}
+function memoDialog(md){
+  let dlg=$('memo-dialog');
+  if(!dlg){
+    dlg=document.createElement('div');dlg.id='memo-dialog';
+    dlg.style.cssText='position:fixed;inset:0;background:rgba(10,14,30,.55);display:grid;place-items:center;z-index:50;padding:20px';
+    dlg.innerHTML=`<div style="background:var(--card);border:1px solid var(--line);border-radius:12px;max-width:720px;width:100%;padding:18px;box-shadow:var(--shadow)">
+      <h3 style="margin:0 0 4px">Your floor memo</h3>
+      <p style="margin:0 0 10px;font-size:13px;color:var(--ink2)">Copy it into an email, doc, or note — it’s Markdown.</p>
+      <textarea id="memo-text" readonly style="width:100%;height:300px;font:12px/1.5 ui-monospace,Menlo,monospace;background:var(--card2);color:var(--ink);border:1.5px solid var(--line);border-radius:8px;padding:10px;resize:vertical"></textarea>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button class="action-btn" id="memo-copy">Copy to clipboard</button>
+        <button class="action-btn" id="memo-close" style="background:var(--card2);color:var(--ink);border:1.5px solid var(--line)">Close</button>
+      </div></div>`;
+    document.body.appendChild(dlg);
+    dlg.addEventListener('click',e=>{if(e.target===dlg)dlg.hidden=true;});
+    dlg.querySelector('#memo-close').addEventListener('click',()=>dlg.hidden=true);
+    dlg.querySelector('#memo-copy').addEventListener('click',async()=>{
+      const ta=dlg.querySelector('#memo-text');const btn=dlg.querySelector('#memo-copy');
+      try{await navigator.clipboard.writeText(ta.value);btn.textContent='Copied ✓';}
+      catch(_){ta.select();document.execCommand('copy');btn.textContent='Copied ✓';}
+      setTimeout(()=>btn.textContent='Copy to clipboard',2000);
+    });
+  }
+  dlg.querySelector('#memo-text').value=md;
+  dlg.hidden=false;
 }
 
 function renderBox(b){
